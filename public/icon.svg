@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="LiveChart">
+  <title>LiveChart</title>
+  <!-- A miniature of the chart itself: coloured section header, two bars of
+       chords, a lyric beneath. Full-bleed background so the same artwork serves
+       as a maskable icon — all content sits inside the central 80% safe zone. -->
+  <rect width="512" height="512" fill="#0e0f13"/>
+  <rect x="76" y="118" width="170" height="34" rx="8" fill="#ff6f5e"/>
+  <g stroke="#6f7787" stroke-width="12" stroke-linecap="round">
+    <line x1="76" y1="188" x2="76" y2="328"/>
+    <line x1="262" y1="188" x2="262" y2="328"/>
+    <line x1="448" y1="188" x2="448" y2="328"/>
+  </g>
+  <g fill="#ffffff">
+    <rect x="104" y="226" width="86" height="44" rx="8"/>
+    <rect x="290" y="226" width="66" height="44" rx="8"/>
+  </g>
+  <rect x="76" y="368" width="280" height="26" rx="8" fill="#93b4e6"/>
+</svg>

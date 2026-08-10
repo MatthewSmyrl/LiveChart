@@ -1,0 +1,26 @@
+Title: Format Test
+Artist: LiveChart
+Key: Am
+Capo: 0
+Time: 6/8
+Tempo: 120
+Notes: Exercises every renderer feature. Not a real song.
+
+[Rests]
+-- Whole, half and quarter rests, all inferred from beat slots.
+|Am |R |Am  R |Am  R  R |
+Rest durations need no extra syntax
+
+[No Chord]
+|N.C. |Am |% |
+Everybody out, then back in
+
+[Wide Names]
+|Bbmaj9#11 |F#m7b5/C# |stop |
+Long chord names and an unrecognised literal
+
+[Two Per Bar] x2
+|Am  G |F  E7 |
+Two chords sharing one bar
+
+[Rests]

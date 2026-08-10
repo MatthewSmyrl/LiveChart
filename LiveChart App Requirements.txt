@@ -1,0 +1,87 @@
+iPad Chord Charts App — Planning Document
+
+Plain-English Summary
+
+A web-based performance tool for guitarists to display chord charts and lyrics on an iPad during live gigs. You create or import songs with chords and lyrics, organize them into setlists, and display them hands-free during performance. The app works entirely offline once loaded, requires no internet during a gig, and prioritizes readability and minimal interaction mid-performance.
+
+Requirements
+
+Application name: LiveChart
+
+Must-haves for v1:
+
+Display lyrics with chord notation clearly readable from a few feet away on iPad
+Load songs from a formatted text file
+Store time signature as metadata for each song
+Time signature should inform how chords and lyrics are displayed visually
+Work offline without internet dependency
+Minimal taps or scrolling needed mid-song
+
+Nice-to-haves (post-v1):
+
+Import chords from PDF files
+Build and save setlists for specific gigs
+Share setlists with bandmates
+Search or filter songs
+
+Definition of done for v1: You can load a text file with one song, read it easily on your iPad during a practice or small gig, and navigate between songs with minimal fuss.
+
+Solution Approach
+
+Approach One: Simple, self-contained web app (chosen)
+
+You create formatted text files on your computer, upload them to the app, and it displays them beautifully on iPad. Everything runs locally in the browser—no server, no database, no internet needed after loading.
+
+Pros: Quick to build, easy to iterate on, no backend complexity, updates are instant.
+Cons: You manage your own files; sharing charts or syncing across devices requires manual effort.
+
+Architecture Sketch
+
+The app consists of a single front-end web application with no backend or external services. It's divided into four functional modules:
+
+Home/Navigation Module — Menu screen that lets you choose: Import a Song, Build a Setlist, or Perform
+Song Import Module — Create or edit individual songs (title, time signature, lyrics with chords) and save them locally
+Setlist Module — Group songs together, order them for a specific gig, save as a named setlist
+Performance Display Module — Load and display a song or setlist with optimized visual formatting for reading during play
+
+All data (songs, setlists) is stored locally on your iPad using the browser's local storage, so nothing leaves your device.
+
+Key Data Structure
+
+Each song contains:
+
+Title
+Time signature (e.g., 4/4, 3/4, 6/8)
+Lyrics with chord notation in a defined text format
+Optional metadata (key, tempo, notes)
+
+Time signature directly informs the display layout—different time signatures will render chords and lyrics with different visual grouping to match the rhythm.
+
+Build Milestones
+
+Milestone One: Core Display
+Load a manually-created text file, parse it, and display the song (lyrics and chords) on iPad in a readable, usable format.
+Deliverable: A working song display you can actually use, even if you're still creating files by hand.
+
+Milestone Two: Visual Polish
+Optimize readability for stage use—font sizes, scrolling behavior, brightness/contrast controls, tap navigation between songs, anything that makes it genuinely gig-ready.
+Deliverable: The app is now actually useful for a real performance, even with manual file management.
+
+Milestone Three: Song Import Module
+Build in-app interface to create and edit songs without needing to manage text files on your computer.
+Deliverable: You can create a new song entirely within the app.
+
+Milestone Four: Setlist Module
+Build the ability to group songs, order them, and save setlists tied to specific gigs.
+Deliverable: You can organize songs for a gig and recall that setlist later.
+
+Text File Format (to be finalized in code phase)
+
+We'll define a clear, human-readable text format for songs so you can create them manually before the import module is built. Details to be worked out in the next phase, but it will clearly mark chords, separate verses, and include metadata like time signature.
+
+Decisions Log
+
+Web app vs. native app: Chose web app for speed, ease of updates, and offline capability.
+Cloud sync vs. local files: Chose local-file approach for v1 (simpler, faster to build). Cloud sync deferred to post-v1 if needed.
+Modular architecture: App organized into four separate modules (Home, Import, Setlist, Performance) so each can be built and tested independently.
+Time signature as functional input: Time signature is not just metadata—it actively shapes how chords and lyrics are displayed visually.

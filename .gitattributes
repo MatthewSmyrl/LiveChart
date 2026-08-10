@@ -1,0 +1,6 @@
+# Normalise to LF in the repository. The build runs on Linux in CI and on
+# Windows here; without this every file churns on line endings alone.
+* text=auto eol=lf
+
+*.png binary
+*.pdf binary

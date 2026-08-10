@@ -1,0 +1,24 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+*.tsbuildinfo
+
+# Personal tool permissions, not project configuration.
+.claude/settings.local.json
+
+# Real charts and their source material. The deployed site is public — GitHub
+# Pages has no private-site option — so nothing under copyright is committed.
+# `songs/` carries only the self-authored format fixture; put your own charts in
+# `songs/local/` and they will be picked up in dev without ever being published.
+songs/local/
+/That funny feeling.lcf
+/That funny feeling.html
+/that funny feeling official.pdf
+
+# OpenOffice lock files
+.~lock.*#
+
+.DS_Store
+Thumbs.db
