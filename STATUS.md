@@ -200,7 +200,22 @@ rejected; GitHub Pages in Phase 4 solves it properly.
 
 ---
 
-## Phase 4a — Install and offline · done 2026-08-10, not yet deployed
+## Phase 4a — Install and offline · deployed 2026-08-11
+
+**Live at https://matthewsmyrl.github.io/LiveChart/** — repo
+`MatthewSmyrl/LiveChart`, public, deployed by Actions on push to `main`. Pages
+paths are case-sensitive, so the capitalisation matters in the URL even though
+the relative `base` means the build itself does not care.
+
+Two things to know for a future session:
+
+- **The preview pane refuses to load `github.io`** — blocked by policy. Verify
+  the live site with `WebFetch` against `manifest.webmanifest`, `sw.js` and the
+  root instead. The `/repos/{owner}/{repo}/pages` API needs auth and 404s
+  without it; the Actions runs and jobs endpoints do not.
+- **Enabling Pages does not retrigger the workflow.** The first run fails at
+  `actions/configure-pages` with Pages switched off, and needs a manual re-run.
+
 
 The gap this closes: **wake lock needs a secure context**, so over LAN HTTP the
 iPad sleeps mid-song. And iOS wipes script-writable storage after 7 days of
@@ -222,13 +237,20 @@ come *before* the library, or Phase 4b's imported songs evaporate between gigs.
 - `.github/workflows/deploy.yml` — test, build, publish to Pages on push to
   `main`. A red suite does not reach the iPad.
 
-**Verified**: served from `http://localhost:4180/livechart/`, the worker
+**Verified locally**: served from `http://localhost:4180/livechart/`, the worker
 registers at the right scope, precaches all 8 files, and — with the server
 killed — a reload still renders the full chart, stylesheet and all. That is the
 offline path proven, not assumed.
 
-**Untested until deployed**: wake lock itself, and the iOS home-screen install.
-Both need the real HTTPS origin.
+**Verified live**: the manifest keeps its relative `start_url`/`scope`, and
+`sw.js` carries the right 8-file list against the `/LiveChart/` subpath. The
+deployed bundle is `index-DJiHmbhj.js`, byte-identical to a build made with
+`songs/local/` absent — so the published site provably carries no chart but the
+fixture. Check that hash against a local fixture-only build if the policy ever
+needs re-proving.
+
+**Still untested — needs the iPad**: wake lock itself, and the home-screen
+install. Both need iOS on the real origin, so neither can be checked from here.
 
 **CI runs a reduced suite.** The golden-file test parses the real chart, which
 now lives in gitignored `songs/local/`, so it self-skips where the file is
