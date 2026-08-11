@@ -361,6 +361,15 @@ real charts on the installed app, so there is no longer a trade.
 - **A backup is a file from outside the app**, so restoring one takes only `lc.*`
   string preferences and skips song entries it cannot read, rather than refusing
   the whole bundle or writing arbitrary keys into `localStorage`.
+- **The file input carries no `accept` attribute, and must not.** iOS resolves
+  `accept` entries to UTIs, and `.lcf` is an extension nothing has registered, so
+  *any* accept list greys the charts out in the Files picker — hit on the iPad
+  2026-08-11 with `accept=".lcf,.json,.txt,text/plain,application/json"`.
+  `text/plain` does not rescue it, because iOS types an unknown extension as
+  generic data rather than text. Showing every file costs nothing: what a file is
+  gets decided by reading it, and a non-chart is refused by name with a reason.
+  **Adding a filter back would silently break importing on the only device that
+  matters.**
 
 **Verified in the preview pane**, from a cleared database each time: a first run
 seeds and opens the local chart; import adds a chart and rejects a non-chart with

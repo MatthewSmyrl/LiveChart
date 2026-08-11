@@ -109,9 +109,13 @@ export function LibraryView({
         ref={fileInput}
         className="library__file"
         type="file"
-        // A .lcf is plain text; some pickers only offer files whose type they
-        // recognise, so both the extension and the MIME types are listed.
-        accept=".lcf,.json,.txt,text/plain,application/json"
+        // Deliberately unfiltered. iOS resolves `accept` entries to UTIs, and
+        // `.lcf` is an extension nothing has registered, so *any* accept list
+        // greys the charts out in the Files picker — confirmed on the iPad,
+        // 2026-08-11. `text/plain` does not rescue it either, since iOS types an
+        // unknown extension as generic data rather than text. Showing every file
+        // costs nothing: what a file actually is gets decided by reading it, and
+        // anything that isn't a chart is refused by name with a reason.
         multiple
         onChange={(e) => void onPick(e.target.files)}
       />
