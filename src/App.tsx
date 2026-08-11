@@ -1,51 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseLcf } from './lcf/parse';
 import { ChartView } from './render/ChartView';
+import { LibraryView } from './library/LibraryView';
+import { idFor } from './library/identity';
+import { preferredSeedTitle } from './library/seed';
+import { useLibrary } from './library/useLibrary';
 import { PedalLearn } from './perform/PedalLearn';
 import { TapZones } from './perform/TapZones';
 import { DEFAULT_BINDINGS, type Bindings } from './perform/keymap';
 import { usePerformance } from './perform/usePerformance';
 import { useWakeLock } from './perform/useWakeLock';
 
-/**
- * Songs compiled into the bundle. Stand-in until the Phase 4b library exists.
- *
- * `songs/` holds only the self-authored format fixture, because the deployed
- * site is public — GitHub Pages offers no private-site option — and nothing
- * under copyright gets published. Your own charts go in `songs/local/`, which
- * is gitignored: they are picked up here in dev and in any build you run
- * yourself, and are absent from the build CI publishes.
- *
- * Select one with `?song=<file name without extension>`.
- */
-// The options must be an object literal at the call site — Vite rewrites these
-// statically and will not follow a hoisted const.
-const shipped = import.meta.glob('../songs/*.lcf', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>;
-const local = import.meta.glob('../songs/local/*.lcf', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>;
-
-const nameOf = (path: string) => path.split('/').pop()!.replace(/\.lcf$/, '');
-const library = new Map<string, string>();
-for (const [path, text] of [...Object.entries(shipped), ...Object.entries(local)]) {
-  library.set(nameOf(path), text);
-}
-
-// Your own charts win the default when they are present; the fixture is what
-// the published build falls back to.
-const fallback = Object.keys(local)[0] ?? Object.keys(shipped)[0] ?? '';
-const requested = new URLSearchParams(location.search).get('song');
-const source = library.get(requested ?? '') ?? library.get(nameOf(fallback)) ?? '';
+/** `?song=<title>` opens a chart directly, which is handy in dev. */
+const requestedTitle = new URLSearchParams(location.search).get('song');
 
 type Theme = 'dark' | 'light';
 
-/** Phase 4 replaces this with a proper IndexedDB store; prefs stay in localStorage. */
+/** Songs live in IndexedDB; preferences stay in localStorage. */
 function usePref<T>(key: string, initial: T): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(() => {
     try {
@@ -87,13 +58,45 @@ export function App() {
   const [theme, setTheme] = usePref<Theme>('lc.theme', 'dark');
   const [step, setStep] = usePref<number>('lc.step', 0.75);
   const [bindings, setBindings] = usePref<Bindings>('lc.bindings', DEFAULT_BINDINGS);
+  const [rememberedId, setRememberedId] = usePref<string | null>('lc.currentSong', null);
 
   const [perform, setPerform] = useState(false);
   const [learning, setLearning] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [hintVisible, setHintVisible] = useState(true);
 
-  const song = useMemo(() => parseLcf(source), []);
+  const library = useLibrary();
+  const { songs } = library;
+
+  // Land on the song you were last looking at, so launching mid-set costs no
+  // taps. A first run has nothing remembered, and falls back to whatever seeded
+  // the library.
+  const currentId = useMemo(() => {
+    if (songs === null) return null;
+    const has = (id: string | null): id is string => !!id && songs.some((s) => s.id === id);
+    const seeded = preferredSeedTitle();
+    for (const candidate of [
+      requestedTitle && idFor(requestedTitle),
+      rememberedId,
+      seeded && idFor(seeded),
+    ]) {
+      if (has(candidate)) return candidate;
+    }
+    return null;
+  }, [songs, rememberedId]);
+
+  const current = songs?.find((s) => s.id === currentId) ?? null;
+  const song = useMemo(() => (current ? parseLcf(current.text) : null), [current?.text]);
+
+  // Nothing to show means the library is the only sensible screen — a first run
+  // with an empty store, or the last song deleted.
+  const inLibrary = browsing || (songs !== null && current === null);
+
+  // A different song starts at its own beginning, not wherever the last one was.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [currentId]);
 
   // A song's `Lyrics:` tag wins every time the song opens; the toolbar button
   // overrides it for as long as that song is up, and reopening brings the tag
@@ -101,7 +104,7 @@ export function App() {
   // which is the case this exists for.
   const [lyricsOverride, setLyricsOverride] = useState<boolean | null>(null);
   useEffect(() => setLyricsOverride(null), [song]);
-  const showLyrics = lyricsOverride ?? song.meta.lyricsDefault ?? lyricsPref;
+  const showLyrics = lyricsOverride ?? song?.meta.lyricsDefault ?? lyricsPref;
 
   // The button writes the saved preference too: it is "what you last chose",
   // and it only decides songs whose file stays out of it.
@@ -156,7 +159,8 @@ export function App() {
   const { turn, notice } = usePerformance({
     fraction: step,
     bindings,
-    suspended: learning,
+    // A pedal press must not page the song list while you are choosing one.
+    suspended: learning || inLibrary,
     // Phase 5 advances the setlist here. For now the confirming press parks the
     // song at its end rather than doing something surprising.
     onEnd: undefined,
@@ -174,6 +178,22 @@ export function App() {
 
   const cycleStep = () => setStep(STEPS[(STEPS.indexOf(step as (typeof STEPS)[number]) + 1) % STEPS.length] ?? 0.75);
 
+  if (inLibrary) {
+    return (
+      <LibraryView
+        library={library}
+        currentId={currentId}
+        onOpen={(id) => {
+          setRememberedId(id);
+          setBrowsing(false);
+        }}
+        onClose={() => setBrowsing(false)}
+      />
+    );
+  }
+
+  if (song === null) return <p className="library__empty">Opening the library…</p>;
+
   return (
     <>
       <div className={`toolbar ${chromeUp ? '' : 'toolbar--away'}`}>
@@ -187,6 +207,9 @@ export function App() {
           </button>
         </div>
         <div className="toolbar__group">
+          <button className="btn" onClick={() => setBrowsing(true)}>
+            Songs
+          </button>
           <button className="btn" onClick={cycleStep} aria-label={`Page turn travels ${step * 100}% of the screen`}>
             Step {step * 100}%
           </button>

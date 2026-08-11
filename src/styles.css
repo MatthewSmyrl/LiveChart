@@ -121,6 +121,92 @@ body {
   color: var(--accent-edge);
 }
 
+.btn--danger {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+/* ------------------------------------------------------------------ library */
+
+.library {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1rem max(1rem, env(safe-area-inset-left)) 3rem;
+}
+
+.library__bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+}
+
+.library__title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+/* Driven by the Import button: a bare file input is a poor tap target. */
+.library__file {
+  display: none;
+}
+
+.library__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.library__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.library__open {
+  flex: 1;
+  /* Generous, because this is the one control you use in a hurry. */
+  min-height: 3rem;
+  padding: 0.5rem 0.25rem;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 1.25rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.library__row--current .library__open {
+  color: var(--accent-edge);
+  font-weight: 600;
+}
+
+.library__notice,
+.library__warn,
+.library__empty,
+.library__hint {
+  color: var(--dim);
+  font-size: 0.95rem;
+}
+
+.library__warn {
+  color: var(--warning);
+}
+
+.library__empty {
+  padding: 2rem 1rem;
+}
+
 .btn__sup,
 .btn__sub {
   font-size: 0.7em;

@@ -1,14 +1,20 @@
 # LiveChart — project status
 
-**Last updated:** 2026-08-11 · **Phases 0–3 and 4a complete** · 86 tests locally,
-78 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
+**Last updated:** 2026-08-11 · **Phases 0–4b complete** · 102 tests locally,
+94 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
 
 ---
 
-## Start here — Phase 4b is next, nothing is blocked
+## Start here — import the real charts on the iPad
 
-Phase 4a is done and confirmed on the device. **Phase 4b — library, IndexedDB,
-`.lcf` import, export/backup** is the next piece of work; see below.
+Phase 4b has landed, so **the next thing to do on the device is import your own
+`.lcf` files**: open **Songs → Import** and pick them out of Files or iCloud.
+That closes the gap that has run through the whole project — until now the
+choice was the deployed PWA with only the fixture, or a LAN dev server with no
+wake lock. Once they are imported, **back up** straight away; that is what makes
+them survive iOS clearing storage.
+
+After that, **Phase 5 — setlists** is the next piece of work.
 
 The iPad run of the installed PWA (2026-08-11):
 
@@ -101,16 +107,21 @@ there is no reason to set it at all; if you must, use PowerShell.
 
 ### Songs
 
+Songs live in **IndexedDB on the device**, not in the bundle. The repo's `songs/`
+directories only *seed* an empty library on a first run — after that the library
+is the truth, and deleting a seeded song keeps it deleted (`lc.seeded`).
+
 `songs/` carries only `Format Test.lcf`, the self-authored fixture covering
 rests, `N.C.`, 6/8 and wide chord names. **Real charts go in `songs/local/`,
 which is gitignored** — the deployed site is public, GitHub Pages has no
-private-site option, and nothing under copyright is published. `App.tsx` globs
-both directories, prefers a local song for the default, and takes
-`?song=<file name without extension>` to pick one.
+private-site option, and nothing under copyright is published. `src/library/seed.ts`
+globs both and prefers a local song when choosing what to open first;
+`?song=<title>` opens one directly, which is handy in dev.
 
-This means **the deployed app shows only the fixture**, while a local dev server
-shows the real chart. Phase 4b replaces the whole arrangement with an on-device
-library.
+So **the deployed build still seeds only the fixture**, while a local dev server
+seeds the real chart. On the iPad the real charts arrive by **importing `.lcf`
+files** — which is the point of Phase 4b: they reach the device without ever
+entering the repo or the published site.
 
 Keep this policy in mind when writing project docs too: `STATUS.md` and
 `README.md` are published. Lyric fragments were removed from this file on
@@ -122,6 +133,8 @@ Keep this policy in mind when writing project docs too: `STATUS.md` and
 after 3.5s, the tap-zone outlines clear after 2s, and the screen is held awake.
 Arrow keys, Page Up/Down and Space turn the page whether or not performance mode
 is on. **Pedal** opens the learn screen. **Step** cycles the page-turn distance.
+**Songs** opens the library; the app launches straight back into whatever chart
+you last had open, so starting it mid-set costs no taps.
 
 Prefs persist in `localStorage` (`lc.*`), so the toolbar may not show the
 defaults described here — the step selector in particular is whatever it was
@@ -183,7 +196,12 @@ All of these are settled and reflected in the code and in `LCF-SPEC.md`.
 | Tap zones | Stacked bands, **12% / 33% / 55%** — menu, back, advance. Your hand comes from below, so the biggest and lowest band is the one you need most |
 | Zone outlines | Dashed outlines **stay**, but clear on their own **2s** timer rather than the toolbar's 3.5s. They are a reference you read once, not a control you reach for |
 | Bar width | **Uniform across the chart, but fitted to the song** rather than a fixed multiple of the type size. `planBars` takes the widest bar at which the song's longest chord line still fits one row, clamped to 4–5 chord-em. Wrapping a phrase costs more on stage than a narrower bar; space to the right of a short line costs nothing, since every chord line gets its own row regardless |
-| Published content | **No copyrighted charts in the repo or the deployed site.** Real songs live on the device. This is why `songs/local/` is gitignored and why Phase 4b matters |
+| Published content | **No copyrighted charts in the repo or the deployed site.** Real songs live on the device, and reach it by import. This is why `songs/local/` is gitignored |
+| Launch destination | **The song you last had open.** Starting the app mid-set must not cost a tap. The library is one button away, and is only forced when there is nothing to show |
+| Song identity | **The file's own `Title` attribute**, case- and space-insensitive. Re-importing a chart you edited on a computer updates the one you have rather than leaving near-duplicates to choose between at a gig |
+| Backup shape | **One JSON bundle of everything, plus per-song `.lcf` export.** The bundle carries each song's original source plus the `lc.*` prefs, so one file restores a wiped device; the per-song export gets a single chart back out in a form you can edit. Import accepts either |
+| Seeding | **Once, and only once.** `songs/` and `songs/local/` fill an empty library on a first run, then `lc.seeded` stops them coming back — deleting the fixture has to stick |
+| Restored preferences | **Applied at the next launch, not mid-session.** Yanking the type size or theme out from under whoever is looking at the screen is worse than waiting |
 | Service worker updates | **No `skipWaiting`.** A new version never swaps itself in under a song in progress; it takes over at the next launch |
 | Per-song lyrics | **`Lyrics: on\|off` in the file header, and it wins every time the song opens.** Whether you need the words is a property of the song, not something to remember at the top of it. The toolbar button still overrides for as long as that song is up; reopening restores the tag. Untagged songs fall back to `lc.showLyrics` |
 | Wake lock on iOS | **Keep asking through the standard API; no video hack.** iPadOS 16.4–16.7 grants the lock and drops it unprompted, so what matters is re-acquiring — on any gesture, on `visibilitychange`, and on a 30s timer. A pedal-driven song never sleeps. The hidden-video trick would cost battery at every gig to cover a gap the pedal already covers, and a fixed iPadOS would make it dead weight |
@@ -305,7 +323,7 @@ fixture. Re-prove the policy that way if it is ever questioned.
 
 **CI runs a reduced suite.** The golden-file test parses the real chart, which
 lives in gitignored `songs/local/`, so it self-skips where the file is absent:
-86 tests locally, 78 in CI. It is the only test covering a whole song rather
+102 tests locally, 94 in CI. It is the only test covering a whole song rather
 than a snippet — **run the suite locally before pushing.**
 
 **All three 4a checks are now confirmed on the device** — install, offline and,
@@ -323,22 +341,42 @@ Verified in the preview pane against the precedence rule in the decision table:
 with `lc.showLyrics` set to `false`, the tagged fixture still opened with all
 five lyric lines; the toolbar button hid them; a reload brought them back.
 
+### Phase 4b — Library and storage (16 more tests)
+
+What it closes: until now the choice was the deployed PWA (wake lock, only the
+fixture) or the LAN dev server (real chart, no wake lock). Importing puts the
+real charts on the installed app, so there is no longer a trade.
+
+- `src/library/` — `db.ts` (IndexedDB, one `songs` store, hand-written for the
+  same reason as the service worker), `identity.ts`, `merge.ts`, `backup.ts`,
+  `download.ts`, `seed.ts`, `useLibrary.ts`, `LibraryView.tsx`.
+- The pure parts carry the tests, as with `scrollPlan` and `keymap`: identity,
+  merging and the backup format are covered without touching a browser.
+- **Export goes through the share sheet first**, falling back to an anchor
+  download. On an iPad that is the difference between reaching Files, iCloud and
+  AirDrop, and landing somewhere you then have to go looking for.
+- **Storage failures never take the app down.** An unopenable database leaves the
+  songs in memory and a warning on the library screen, because a chart you cannot
+  save still beats no chart on stage.
+- **A backup is a file from outside the app**, so restoring one takes only `lc.*`
+  string preferences and skips song entries it cannot read, rather than refusing
+  the whole bundle or writing arbitrary keys into `localStorage`.
+
+**Verified in the preview pane**, from a cleared database each time: a first run
+seeds and opens the local chart; import adds a chart and rejects a non-chart with
+a reason, in one honest message; re-importing an edited chart updates in place
+rather than duplicating; songs and edits survive a reload; opening a song and
+relaunching lands back on it; a backup captures all songs and prefs, and restores
+a deleted song without restamping the untouched ones; deleting everything leaves
+an empty library that does not reseed.
+
 ---
 
-## Next: Phase 4b — Library and storage
+## Next: Phase 5 — Setlists
 
-- Library, IndexedDB, `.lcf` file import, export/backup.
-- **Export is not optional convenience.** iOS wipes script-writable storage after
-  7 days of non-use and only home-screen PWAs are exempt, so a backup path is
-  what makes the library trustworthy between gigs.
-- This is also what puts real songs back on the iPad. Until it lands the choice
-  is the deployed PWA (wake lock, no real song) or the LAN dev server (real song,
-  no wake lock). Closing that gap is the reason to do it next.
-
-### After that
-- **Phase 5** — Setlists. The hook is already in place: `usePerformance` takes an
-  `onEnd` callback fired by the confirming press at the end of a song, currently
-  passed as `undefined`.
+- The hook is already in place: `usePerformance` takes an `onEnd` callback fired
+  by the confirming press at the end of a song, currently passed as `undefined`.
+  The library gives it something to advance *to*.
 - **Deferred past v1** — in-app editor, PDF/OCR import (the source PDF is
   image-only, no text layer), transpose, sharing.
 
