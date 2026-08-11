@@ -39,6 +39,36 @@ describe('header attributes', () => {
   });
 });
 
+describe('the Lyrics attribute', () => {
+  const lyricsDefault = (value: string) =>
+    song(`Title: X\nLyrics: ${value}\n\n[A]\n|C |\n`).meta.lyricsDefault;
+
+  it('accepts every spelling of on and off, in any case', () => {
+    for (const on of ['on', 'yes', 'true', 'show', '1', 'ON', ' On ']) {
+      expect(lyricsDefault(on)).toBe(true);
+    }
+    for (const off of ['off', 'no', 'false', 'hide', '0', 'OFF', ' Off ']) {
+      expect(lyricsDefault(off)).toBe(false);
+    }
+  });
+
+  it('is undefined when absent, so the app preference stands', () => {
+    expect(song('Title: X\n\n[A]\n|C |\n').meta.lyricsDefault).toBeUndefined();
+  });
+
+  // A guess here would silently hide the words on stage.
+  it('warns and ignores an unrecognised value rather than guessing', () => {
+    const r = song('Title: X\nLyrics: sometimes\n\n[A]\n|C |\n');
+    expect(r.meta.lyricsDefault).toBeUndefined();
+    expect(r.warnings.some((w) => /Lyrics/.test(w.message))).toBe(true);
+    expect(r.errors).toEqual([]);
+  });
+
+  it('is a known attribute, so it stays out of the info panel extras', () => {
+    expect(song('Title: X\nLyrics: off\n\n[A]\n|C |\n').meta.extra).toEqual({});
+  });
+});
+
 describe('time signature', () => {
   it('groups compound metres in threes', () => {
     expect(parseTimeSignature('6/8')?.grouping).toEqual([3, 3]);

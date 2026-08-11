@@ -22,6 +22,11 @@ export interface SongMeta {
   time: TimeSignature;
   tempo?: number;
   notes?: string;
+  /**
+   * Whether lyrics are shown when this song opens. Undefined when the file says
+   * nothing, in which case the app's saved preference stands.
+   */
+  lyricsDefault?: boolean;
   /** Any attribute we don't know about, preserved for the info panel. */
   extra: Record<string, string>;
 }

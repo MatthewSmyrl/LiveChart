@@ -28,8 +28,20 @@ const SECTION_RE = /^\[([^\]]*)\]\s*(.*)$/;
 const REPEAT_RE = /^x\s*(\d+)$/i;
 
 // ---------------------------------------------------------------------------
-// Time signature
+// Header attributes
 // ---------------------------------------------------------------------------
+
+/**
+ * Reads a yes/no attribute value. Null when it means neither, which the caller
+ * turns into a warning rather than a guess — silently choosing for the player
+ * is how a chart ends up wrong on stage.
+ */
+export function parseFlag(raw: string): boolean | null {
+  const v = raw.trim().toLowerCase();
+  if (['on', 'yes', 'true', 'show', '1'].includes(v)) return true;
+  if (['off', 'no', 'false', 'hide', '0'].includes(v)) return false;
+  return null;
+}
 
 /** Compound metres group in threes; 5/8 and 7/8 get conventional defaults. */
 function groupingFor(beats: number, unit: number): number[] {
@@ -303,7 +315,7 @@ export function parseLcf(source: string): Song {
   }
 
   // --- Metadata --------------------------------------------------------------
-  const known = new Set(['title', 'artist', 'key', 'capo', 'time', 'tempo', 'notes']);
+  const known = new Set(['title', 'artist', 'key', 'capo', 'time', 'tempo', 'notes', 'lyrics']);
   const extra: Record<string, string> = {};
   for (const [k, v] of attributes) if (!known.has(k)) extra[k] = v;
 
@@ -313,6 +325,20 @@ export function parseLcf(source: string): Song {
     const parsed = parseTimeSignature(timeRaw);
     if (parsed) time = parsed;
     else warnings.push({ line: 0, message: `Unrecognised time signature "${timeRaw}"; using 4/4.` });
+  }
+
+  const lyricsRaw = attributes.get('lyrics');
+  let lyricsDefault: boolean | undefined;
+  if (lyricsRaw !== undefined) {
+    const flag = parseFlag(lyricsRaw);
+    if (flag === null) {
+      warnings.push({
+        line: 0,
+        message: `Unrecognised Lyrics value "${lyricsRaw}"; expected on or off.`,
+      });
+    } else {
+      lyricsDefault = flag;
+    }
   }
 
   const capoRaw = attributes.get('capo');
@@ -331,6 +357,7 @@ export function parseLcf(source: string): Song {
     time,
     ...(tempoMatch ? { tempo: Number(tempoMatch[0]) } : {}),
     ...(attributes.get('notes') ? { notes: attributes.get('notes') } : {}),
+    ...(lyricsDefault === undefined ? {} : { lyricsDefault }),
     extra,
   };
 

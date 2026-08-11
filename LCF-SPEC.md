@@ -55,9 +55,27 @@ Form: `Name: value`, one per line, before the first `[Section]`.
 | `Time` | no | Time signature, e.g. `4/4`, `3/4`, `6/8`. **Defaults to `4/4`** |
 | `Tempo` | no | BPM, integer |
 | `Notes` | no | Free text shown on the song info panel, not in the chart |
+| `Lyrics` | no | Whether lyrics are shown when this song opens. See below |
 
 Unrecognised attributes are preserved and shown in the song info panel. Attribute
 names are matched case-insensitively.
+
+### How `Lyrics` affects display
+
+`Lyrics: off` opens the song with lyrics hidden; `Lyrics: on` opens it with them
+shown. `on`/`off`, `yes`/`no`, `true`/`false`, `show`/`hide` and `1`/`0` are all
+accepted, case-insensitively. An unrecognised value is a warning and the
+attribute is ignored.
+
+A song you know by heart wants the chords alone: fewer page turns, and more of
+the chart on screen at once. That is a property of the song rather than a
+setting you should have to remember at the top of it, which is why it lives in
+the file.
+
+**The tag applies every time the song opens**, overriding the app's saved
+preference. The toolbar's Lyrics button still overrides the tag for as long as
+that song is open — reopening the song brings the tag back. A song with no
+`Lyrics` attribute opens with whatever the app was last set to.
 
 ### How `Time` affects display
 

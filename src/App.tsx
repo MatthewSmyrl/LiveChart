@@ -5,7 +5,7 @@ import { PedalLearn } from './perform/PedalLearn';
 import { TapZones } from './perform/TapZones';
 import { DEFAULT_BINDINGS, type Bindings } from './perform/keymap';
 import { usePerformance } from './perform/usePerformance';
-import { useWakeLock } from './perform/useWakeLock';
+import { describeWake, useWakeLock } from './perform/useWakeLock';
 
 /**
  * Songs compiled into the bundle. Stand-in until the Phase 4b library exists.
@@ -83,7 +83,7 @@ const HINT_IDLE_MS = 2000;
 
 export function App() {
   const [fontScale, setFontScale] = usePref('lc.fontScale', 1);
-  const [showLyrics, setShowLyrics] = usePref('lc.showLyrics', true);
+  const [lyricsPref, setLyricsPref] = usePref('lc.showLyrics', true);
   const [theme, setTheme] = usePref<Theme>('lc.theme', 'dark');
   const [step, setStep] = usePref<number>('lc.step', 0.75);
   const [bindings, setBindings] = usePref<Bindings>('lc.bindings', DEFAULT_BINDINGS);
@@ -94,6 +94,21 @@ export function App() {
   const [hintVisible, setHintVisible] = useState(true);
 
   const song = useMemo(() => parseLcf(source), []);
+
+  // A song's `Lyrics:` tag wins every time the song opens; the toolbar button
+  // overrides it for as long as that song is up, and reopening brings the tag
+  // back. Cleared on a song change — Phase 4b swaps songs without a reload,
+  // which is the case this exists for.
+  const [lyricsOverride, setLyricsOverride] = useState<boolean | null>(null);
+  useEffect(() => setLyricsOverride(null), [song]);
+  const showLyrics = lyricsOverride ?? song.meta.lyricsDefault ?? lyricsPref;
+
+  // The button writes the saved preference too: it is "what you last chose",
+  // and it only decides songs whose file stays out of it.
+  const toggleLyrics = () => {
+    setLyricsOverride(!showLyrics);
+    setLyricsPref(!showLyrics);
+  };
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -147,7 +162,11 @@ export function App() {
     onEnd: undefined,
   });
 
-  useWakeLock(perform);
+  // The toolbar is up for the first 3.5s of performance mode, so this readout
+  // is on screen exactly when you would want to know — and a tap on the top
+  // strip brings it back if the lock is dropped later in the song.
+  const wake = useWakeLock(perform);
+  const wakeLabel = describeWake(wake);
 
   const nudge = (delta: number) =>
     setFontScale(Math.round(Math.min(MAX_SCALE, Math.max(MIN_SCALE, fontScale + delta)) * 100) / 100);
@@ -175,7 +194,7 @@ export function App() {
           </button>
           <button
             className={`btn ${showLyrics ? 'btn--on' : ''}`}
-            onClick={() => setShowLyrics(!showLyrics)}
+            onClick={toggleLyrics}
             aria-pressed={showLyrics}
           >
             Lyrics
@@ -190,6 +209,14 @@ export function App() {
           >
             {perform ? 'Exit' : 'Perform'}
           </button>
+          {wakeLabel && (
+            <span
+              className={`toolbar__readout ${wake.state === 'held' ? '' : 'toolbar__readout--warn'}`}
+              role="status"
+            >
+              {wakeLabel}
+            </span>
+          )}
         </div>
       </div>
 

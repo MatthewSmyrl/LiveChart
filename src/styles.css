@@ -98,6 +98,12 @@ body {
   color: var(--dim);
 }
 
+/* A screen that is going to sleep mid-song is worth reading from a stand. */
+.toolbar__readout--warn {
+  color: var(--warning);
+  white-space: nowrap;
+}
+
 .btn {
   min-height: 2.25rem;
   min-width: 2.75rem;

@@ -1,29 +1,56 @@
 # LiveChart — project status
 
-**Last updated:** 2026-08-11 · **Phases 0–3 and 4a complete** · 82 tests locally,
-74 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
+**Last updated:** 2026-08-11 · **Phases 0–3 complete, 4a all but wake lock** ·
+86 tests locally, 78 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
 
 ---
 
-## ⏳ Start here — one test is outstanding
+## ⏳ Start here — read the wake-lock badge on the iPad
 
-Matt is testing the installed PWA on the iPad. **Ask how it went before planning
-anything**, because the answer decides whether Phase 4b starts or Phase 4a needs
-a fix. Nothing else is blocked on it.
+The iPad run of the installed PWA (2026-08-11) settled two of the three Phase 4a
+checks and left one open:
 
-What he is checking, opened **from the home-screen icon** (not a Safari tab — the
-standalone context is the whole point):
+| Check | Result |
+|---|---|
+| **Add to Home Screen** | ✅ Icon and standalone launch both correct |
+| **Offline** — Airplane Mode, relaunch | ✅ Renders as expected; the service worker is doing its job |
+| **Wake lock** — tap Perform, leave it | ❌ **Screen locked after the 2-minute auto-lock.** iPadOS 16.4–16.7, mains power, Low Power Mode off — so the API exists and should have worked |
 
-| Check | If it works | If it fails |
+**Why it isn't fixed yet: the old code told us nothing.** `useWakeLock` swallowed
+every error, so a refused request and a granted-then-dropped lock looked
+identical to a working one. It now reports what the OS actually did, and the
+toolbar carries a badge next to **Perform**:
+
+| Badge | What it means | Where that points |
 |---|---|---|
-| **Add to Home Screen** | The manifest and icons are right | Suspect `apple-touch-icon` or the `display` mode; the manifest is at `public/manifest.webmanifest` |
-| **Wake lock** — tap Perform, leave it | Phase 4a has done its job; go to 4b | Check `useWakeLock.ts` and whether iOS granted it; the API needs a secure context *and* a visible page |
-| **Offline** — Airplane Mode, relaunch | The service worker is doing its job | Check the SW registered at all; `registerServiceWorker` is a silent no-op by design |
+| `Awake` | Granted and still held | The OS ignored its own grant — a WebKit bug. Next step is the NoSleep-style hidden looping-video fallback |
+| `Sleeps: lock lost` | Granted, then released behind our back | Re-acquire is already wired to `visibilitychange` and to any touch or key; if it still says this, something is releasing it faster than a page turn recovers it |
+| `Sleeps: NotAllowedError` | Refused outright | Usually Low Power Mode or a non-visible page; on 16.4 also a plain standalone-mode refusal |
+| `Sleeps: unsupported` | No API at all | Wrong iPadOS version — but 16.4+ has it |
+
+**Ask Matt what the badge says**, in performance mode, on the iPad. The toolbar
+is up for the first 3.5s after tapping Perform, and a tap on the top strip brings
+it back. That one reading picks the fix; guessing between the four costs a deploy
+each time.
+
+Verified in the preview pane: all four states render, and the badge is warning
+coloured for every one but `Awake`. The in-app browser refuses wake lock even
+when visible, so the granted path was proven against a stubbed sentinel.
 
 He will see the **Format Test** fixture, not his own song — that is deliberate,
 not a bug. See *Songs* below.
 
-**Then Phase 4b.** It is the natural next step regardless of the outcome above.
+**Nor are the six grey dots under every chord a bug**, though they arrived
+looking like one: they are the Phase 2 beat ticks, and `BarCell.tsx` has only
+ever been touched in the one commit that was published, so nothing about them
+changed at the deploy. The fixture is `Time: 6/8`, and
+`bar.tokens.length > 1 || time.beats !== 4 || time.unit !== 4` is true for every
+bar of it. `That Funny Feeling` is 4/4 with a single token in every bar, so it
+renders no ticks whatever — which is why they had never been seen before the
+deploy swapped the song. They will disappear again when Phase 4b puts the real
+chart back on the iPad.
+
+**Then Phase 4b**, which is the natural next step either way.
 
 ---
 
@@ -72,7 +99,8 @@ is on. **Pedal** opens the learn screen. **Step** cycles the page-turn distance.
 
 Prefs persist in `localStorage` (`lc.*`), so the toolbar may not show the
 defaults described here — the step selector in particular is whatever it was
-last set to.
+last set to. **Lyrics are the exception:** a song carrying a `Lyrics:` attribute
+opens the way its file says, whatever `lc.showLyrics` holds.
 
 ### Deploying
 
@@ -131,6 +159,8 @@ All of these are settled and reflected in the code and in `LCF-SPEC.md`.
 | Bar width | **Uniform across the chart, but fitted to the song** rather than a fixed multiple of the type size. `planBars` takes the widest bar at which the song's longest chord line still fits one row, clamped to 4–5 chord-em. Wrapping a phrase costs more on stage than a narrower bar; space to the right of a short line costs nothing, since every chord line gets its own row regardless |
 | Published content | **No copyrighted charts in the repo or the deployed site.** Real songs live on the device. This is why `songs/local/` is gitignored and why Phase 4b matters |
 | Service worker updates | **No `skipWaiting`.** A new version never swaps itself in under a song in progress; it takes over at the next launch |
+| Per-song lyrics | **`Lyrics: on\|off` in the file header, and it wins every time the song opens.** Whether you need the words is a property of the song, not something to remember at the top of it. The toolbar button still overrides for as long as that song is up; reopening restores the tag. Untagged songs fall back to `lc.showLyrics` |
+| Wake-lock failure | **Reported, not swallowed.** A screen that silently goes black mid-song is the worst outcome; the toolbar badge says which of granted / lost / refused / unsupported actually happened |
 
 ---
 
@@ -248,8 +278,22 @@ fixture. Re-prove the policy that way if it is ever questioned.
 
 **CI runs a reduced suite.** The golden-file test parses the real chart, which
 lives in gitignored `songs/local/`, so it self-skips where the file is absent:
-82 tests locally, 74 in CI. It is the only test covering a whole song rather
+86 tests locally, 78 in CI. It is the only test covering a whole song rather
 than a snippet — **run the suite locally before pushing.**
+
+**Wake lock is the one part of 4a still unproven** — see *Start here*. Install
+and offline are confirmed on the device.
+
+### Per-song lyrics · 2026-08-11
+
+`Lyrics: on|off` in the `.lcf` header. `on`/`yes`/`true`/`show`/`1` and their
+opposites all parse, case-insensitively; an unrecognised value is a warning and
+the attribute is ignored rather than guessed at. `songs/Format Test.lcf` carries
+`Lyrics: on`, so the published fixture exercises it.
+
+Verified in the preview pane against the precedence rule in the decision table:
+with `lc.showLyrics` set to `false`, the tagged fixture still opened with all
+five lyric lines; the toolbar button hid them; a reload brought them back.
 
 ---
 
@@ -271,10 +315,10 @@ than a snippet — **run the suite locally before pushing.**
   image-only, no text layer), transpose, sharing.
 
 ### Smaller ideas, not yet scheduled
-- **Toggling lyrics mid-song.** Matt noted that lyrics off buys both content and
-  fewer page turns, but the Lyrics button lives in the toolbar that hides after
-  3.5s — so it is a decision made *before* a song rather than during one. A pedal
-  binding or a per-song default in the `.lcf` would make it live.
+- **Toggling lyrics mid-song.** The per-song `Lyrics:` default landed on
+  2026-08-11, so the decision is now carried by the file. What is still missing
+  is changing your mind *during* a song: the Lyrics button lives in the toolbar
+  that hides after 3.5s. A pedal binding is the remaining lever.
 - **Vertical rhythm.** If page turns ever feel too frequent, the lever is
   `.group` 0.9rem, `.section` 1.75rem and `.bar` min-height 1.5em — not bar
   width, which does not affect vertical extent at all.
@@ -283,13 +327,15 @@ than a snippet — **run the suite locally before pushing.**
 
 ## Open questions
 
-1. **Zone outline timing.** Now 2s, judged in a desktop preview pane rather than
-   at gig distance. Matt did not mention the tap zones after the run-through,
-   which may mean the pedal makes them irrelevant in practice — worth asking
-   whether this can simply be closed.
+1. **Wake lock on iPadOS 16.4–16.7.** The API is present and the request path is
+   now instrumented; what the OS actually does is unknown until the badge is read
+   on the device. See *Start here*.
 
 <details>
 <summary>Resolved questions</summary>
+
+6. **Zone outline timing** — *resolved 2026-08-11.* The tap zones "work great"
+   at gig distance and the 2s outline timer stays as it is. No further work.
 
 2. **Bar density** — *resolved 2026-08-10.* The premise was wrong: narrower bars
    do not fit more song per screen. `columnsFor` already gives every chord line
