@@ -243,7 +243,12 @@ Recorded here because it constrains the parser's output shape.
 
 ## 11. Worked example
 
-See `songs/That Funny Feeling.lcf`.
+See `songs/Format Test.lcf`, which exercises rests, `N.C.`, 6/8 grouping, wide
+chord names, two chords in a bar, and section references.
+
+The fuller worked example is a real chart under copyright, so it is not in this
+repository — it lives in gitignored `songs/local/`. See the *Songs* section of
+`STATUS.md`.
 
 ---
 
