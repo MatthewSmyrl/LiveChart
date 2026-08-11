@@ -5,7 +5,7 @@ import { PedalLearn } from './perform/PedalLearn';
 import { TapZones } from './perform/TapZones';
 import { DEFAULT_BINDINGS, type Bindings } from './perform/keymap';
 import { usePerformance } from './perform/usePerformance';
-import { describeWake, useWakeLock } from './perform/useWakeLock';
+import { useWakeLock } from './perform/useWakeLock';
 
 /**
  * Songs compiled into the bundle. Stand-in until the Phase 4b library exists.
@@ -162,11 +162,12 @@ export function App() {
     onEnd: undefined,
   });
 
-  // The toolbar is up for the first 3.5s of performance mode, so this readout
-  // is on screen exactly when you would want to know — and a tap on the top
-  // strip brings it back if the lock is dropped later in the song.
+  // Reported on the pedal screen rather than over the chart: on iPadOS the lock
+  // is dropped and re-taken constantly, so a live badge would flicker through
+  // every song to say nothing actionable. The pedal screen is opened
+  // deliberately, which is the right place to check whether an iPadOS update
+  // has fixed this.
   const wake = useWakeLock(perform);
-  const wakeLabel = describeWake(wake);
 
   const nudge = (delta: number) =>
     setFontScale(Math.round(Math.min(MAX_SCALE, Math.max(MIN_SCALE, fontScale + delta)) * 100) / 100);
@@ -209,14 +210,6 @@ export function App() {
           >
             {perform ? 'Exit' : 'Perform'}
           </button>
-          {wakeLabel && (
-            <span
-              className={`toolbar__readout ${wake.state === 'held' ? '' : 'toolbar__readout--warn'}`}
-              role="status"
-            >
-              {wakeLabel}
-            </span>
-          )}
         </div>
       </div>
 
@@ -231,7 +224,12 @@ export function App() {
       )}
 
       {learning && (
-        <PedalLearn bindings={bindings} onChange={setBindings} onClose={() => setLearning(false)} />
+        <PedalLearn
+          bindings={bindings}
+          onChange={setBindings}
+          onClose={() => setLearning(false)}
+          wake={wake}
+        />
       )}
     </>
   );

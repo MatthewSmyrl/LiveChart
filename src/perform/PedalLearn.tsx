@@ -8,6 +8,7 @@ import {
   type Bindings,
 } from './keymap';
 import type { Direction } from './scrollPlan';
+import { describeWake, type WakeStatus } from './useWakeLock';
 
 /**
  * Capture screen for teaching the app what a pedal actually sends.
@@ -20,10 +21,13 @@ export function PedalLearn({
   bindings,
   onChange,
   onClose,
+  wake,
 }: {
   bindings: Bindings;
   onChange: (next: Bindings) => void;
   onClose: () => void;
+  /** Reported here rather than over the chart. See `useWakeLock`. */
+  wake: WakeStatus;
 }) {
   const [capturing, setCapturing] = useState<Direction | null>(null);
   const [rejected, setRejected] = useState(false);
@@ -120,6 +124,13 @@ export function PedalLearn({
             in a two-key mode, or restore the defaults and use tap zones.
           </p>
         )}
+
+        <div className="learn__row">
+          <div className="learn__label">
+            <b>Keep screen awake</b>
+            <span className="learn__hint">{describeWake(wake)}</span>
+          </div>
+        </div>
 
         <div className="learn__actions">
           <button className="btn" onClick={() => onChange(DEFAULT_BINDINGS)}>

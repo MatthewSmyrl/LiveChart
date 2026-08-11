@@ -1,41 +1,69 @@
 # LiveChart — project status
 
-**Last updated:** 2026-08-11 · **Phases 0–3 complete, 4a all but wake lock** ·
-86 tests locally, 78 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
+**Last updated:** 2026-08-11 · **Phases 0–3 and 4a complete** · 86 tests locally,
+78 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
 
 ---
 
-## ⏳ Start here — read the wake-lock badge on the iPad
+## Start here — Phase 4b is next, nothing is blocked
 
-The iPad run of the installed PWA (2026-08-11) settled two of the three Phase 4a
-checks and left one open:
+Phase 4a is done and confirmed on the device. **Phase 4b — library, IndexedDB,
+`.lcf` import, export/backup** is the next piece of work; see below.
+
+The iPad run of the installed PWA (2026-08-11):
 
 | Check | Result |
 |---|---|
 | **Add to Home Screen** | ✅ Icon and standalone launch both correct |
 | **Offline** — Airplane Mode, relaunch | ✅ Renders as expected; the service worker is doing its job |
-| **Wake lock** — tap Perform, leave it | ❌ **Screen locked after the 2-minute auto-lock.** iPadOS 16.4–16.7, mains power, Low Power Mode off — so the API exists and should have worked |
+| **Wake lock** | ✅ **In pedal use.** See below — the answer is subtler than it looks |
 
-**Why it isn't fixed yet: the old code told us nothing.** `useWakeLock` swallowed
-every error, so a refused request and a granted-then-dropped lock looked
-identical to a working one. It now reports what the OS actually did, and the
-toolbar carries a badge next to **Perform**:
+### The wake lock, and why there is no video hack
 
-| Badge | What it means | Where that points |
-|---|---|---|
-| `Awake` | Granted and still held | The OS ignored its own grant — a WebKit bug. Next step is the NoSleep-style hidden looping-video fallback |
-| `Sleeps: lock lost` | Granted, then released behind our back | Re-acquire is already wired to `visibilitychange` and to any touch or key; if it still says this, something is releasing it faster than a page turn recovers it |
-| `Sleeps: NotAllowedError` | Refused outright | Usually Low Power Mode or a non-visible page; on 16.4 also a plain standalone-mode refusal |
-| `Sleeps: unsupported` | No API at all | Wrong iPadOS version — but 16.4+ has it |
+Worth reading before touching `useWakeLock.ts`, because the obvious conclusion
+from the first symptom is the wrong one.
 
-**Ask Matt what the badge says**, in performance mode, on the iPad. The toolbar
-is up for the first 3.5s after tapping Perform, and a tap on the top strip brings
-it back. That one reading picks the fix; guessing between the four costs a deploy
-each time.
+**Symptom:** enter performance mode, leave the iPad untouched, and the screen
+locks at the 2-minute auto-lock. iPadOS 16.4–16.7, mains power, Low Power Mode
+off — so the API is present and the usual excuses don't apply.
 
-Verified in the preview pane: all four states render, and the badge is warning
-coloured for every one but `Awake`. The in-app browser refuses wake lock even
-when visible, so the granted path was proven against a stubbed sentinel.
+**What actually happens:** iPadOS *grants* the lock and then *drops it on its
+own*, without us asking. Re-requesting works, but only from a user gesture — the
+attempt on `visibilitychange` after a device unlock is refused with
+`NotAllowedError`, while the very next tap or pedal press succeeds.
+
+**So it comes down to whether anything prompts a retry.** A pedal press does.
+A **pedal-only run of several minutes never slept** — which is what a gig
+actually looks like, since a Bluetooth pedal keystroke is not touch input and
+does not reset the auto-lock timer by itself. The original test failed only
+because the iPad was left completely alone.
+
+**Diagnosing this needed a badge, and reading the badge broke the experiment** —
+the tap needed to reveal the toolbar was itself a gesture that re-took the lock.
+The pedal-only run is what settled it. The badge has since been removed from the
+toolbar; the same status now sits as a line on the **Pedal** screen, which is
+only opened deliberately.
+
+**Decisions that came out of it**, both Matt's call and both right:
+
+- **No looping-video fallback.** The NoSleep trick would burn the compositor
+  through every gig to cover a gap the pedal already covers. It was only ever
+  the right answer if the grant were cosmetic, and it isn't.
+- **Keep asking through the real API.** The code is correct against the spec;
+  iPadOS is the thing that is wrong. A fixed iPadOS starts working for free, and
+  every non-iOS browser is already correct today.
+
+Mitigations in place: re-acquire on any pointer or key event, on
+`visibilitychange`, and on a 30s timer for the gap a page turn doesn't cover — a
+long instrumental, or a word with the audience. Matt is also lengthening the
+iPad's auto-lock, which attacks the same gap from the other side.
+
+**One real bug fell out of the investigation.** The guard against double-taking
+the lock only checked the existing sentinel, not a request already in flight, so
+two quick pedal presses could both pass, take two locks, and strand the first
+untracked — leaving the screen awake after performance mode ended. Fixed with an
+`inFlight` flag; verified that three presses inside the grant window now yield
+exactly one request, and that exiting releases everything.
 
 He will see the **Format Test** fixture, not his own song — that is deliberate,
 not a bug. See *Songs* below.
@@ -49,8 +77,6 @@ bar of it. `That Funny Feeling` is 4/4 with a single token in every bar, so it
 renders no ticks whatever — which is why they had never been seen before the
 deploy swapped the song. They will disappear again when Phase 4b puts the real
 chart back on the iPad.
-
-**Then Phase 4b**, which is the natural next step either way.
 
 ---
 
@@ -160,7 +186,8 @@ All of these are settled and reflected in the code and in `LCF-SPEC.md`.
 | Published content | **No copyrighted charts in the repo or the deployed site.** Real songs live on the device. This is why `songs/local/` is gitignored and why Phase 4b matters |
 | Service worker updates | **No `skipWaiting`.** A new version never swaps itself in under a song in progress; it takes over at the next launch |
 | Per-song lyrics | **`Lyrics: on\|off` in the file header, and it wins every time the song opens.** Whether you need the words is a property of the song, not something to remember at the top of it. The toolbar button still overrides for as long as that song is up; reopening restores the tag. Untagged songs fall back to `lc.showLyrics` |
-| Wake-lock failure | **Reported, not swallowed.** A screen that silently goes black mid-song is the worst outcome; the toolbar badge says which of granted / lost / refused / unsupported actually happened |
+| Wake lock on iOS | **Keep asking through the standard API; no video hack.** iPadOS 16.4–16.7 grants the lock and drops it unprompted, so what matters is re-acquiring — on any gesture, on `visibilitychange`, and on a 30s timer. A pedal-driven song never sleeps. The hidden-video trick would cost battery at every gig to cover a gap the pedal already covers, and a fixed iPadOS would make it dead weight |
+| Wake-lock status | **On the Pedal screen, not over the chart.** The lock is dropped and re-taken constantly on iOS, so a live badge flickers through every song saying nothing actionable. The pedal screen is opened deliberately — the right place to check whether an iPadOS update has fixed this |
 
 ---
 
@@ -281,8 +308,9 @@ lives in gitignored `songs/local/`, so it self-skips where the file is absent:
 86 tests locally, 78 in CI. It is the only test covering a whole song rather
 than a snippet — **run the suite locally before pushing.**
 
-**Wake lock is the one part of 4a still unproven** — see *Start here*. Install
-and offline are confirmed on the device.
+**All three 4a checks are now confirmed on the device** — install, offline and,
+in pedal use, wake lock. See *Start here* for the wake-lock story, which is not
+what the first symptom suggested.
 
 ### Per-song lyrics · 2026-08-11
 
@@ -327,12 +355,14 @@ five lyric lines; the toolbar button hid them; a reload brought them back.
 
 ## Open questions
 
-1. **Wake lock on iPadOS 16.4–16.7.** The API is present and the request path is
-   now instrumented; what the OS actually does is unknown until the badge is read
-   on the device. See *Start here*.
+None outstanding. Phase 4b is the next work, not a question.
 
 <details>
 <summary>Resolved questions</summary>
+
+7. **Wake lock on iPadOS 16.4–16.7** — *resolved 2026-08-11.* Granted, then
+   dropped unprompted; recovered by any gesture, so pedal use holds the screen.
+   No video fallback. See *Start here*.
 
 6. **Zone outline timing** — *resolved 2026-08-11.* The tap zones "work great"
    at gig distance and the 2s outline timer stays as it is. No further work.
