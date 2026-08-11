@@ -5,24 +5,35 @@
 
 ---
 
-## Start here — import the real charts on the iPad
+## ⏳ Start here — Matt is doing real-world testing
 
-Phase 4b has landed, so **the next thing to do on the device is import your own
-`.lcf` files**: open **Songs → Import** and pick them out of Files or iCloud.
-That closes the gap that has run through the whole project — until now the
-choice was the deployed PWA with only the fixture, or a LAN dev server with no
-wake lock. Once they are imported, **back up** straight away; that is what makes
-them survive iOS clearing storage.
+**The app is usable on the iPad for the first time.** Confirmed on the device
+2026-08-11: a `.lcf` selects from the Files picker, opens, and backs up. That
+closes the gap that ran through the whole project — until now the choice was the
+deployed PWA with only the fixture, or a LAN dev server with no wake lock.
 
-After that, **Phase 5 — setlists** is the next piece of work.
+**Matt has paused development to use it properly**: writing more `.lcf` files and
+exercising import, backup and updating songs against real material. **Ask what
+came out of that before planning anything** — the point of the exercise is to
+surface what needs changing, and any fixes come before new work.
 
-The iPad run of the installed PWA (2026-08-11):
+**Phase 5 — setlists** is the next piece of work once that settles. Do not start
+it without checking in; the testing may well reorder the list.
+
+Nothing is blocked. Everything below is done and deployed.
+
+### iPad, as confirmed on the device
 
 | Check | Result |
 |---|---|
 | **Add to Home Screen** | ✅ Icon and standalone launch both correct |
 | **Offline** — Airplane Mode, relaunch | ✅ Renders as expected; the service worker is doing its job |
 | **Wake lock** | ✅ **In pedal use.** See below — the answer is subtler than it looks |
+| **Import a `.lcf`** | ✅ Selects, opens and backs up — after the `accept` fix, see Phase 4b |
+
+**Force-quit and relaunch after every deploy.** There is deliberately no
+`skipWaiting`, so a resumed app is still running the old version — which makes a
+shipped fix look like it did not work.
 
 ### The wake lock, and why there is no video hack
 
@@ -143,7 +154,7 @@ opens the way its file says, whatever `lc.showLyrics` holds.
 
 ### Deploying
 
-Push to `main`; Actions tests, builds and publishes. Two traps already hit:
+Push to `main`; Actions tests, builds and publishes. Traps already hit:
 
 - **The preview pane refuses to load `github.io`** — blocked by policy. Verify
   the live site with `WebFetch` against `manifest.webmanifest`, `sw.js` and the
@@ -151,6 +162,18 @@ Push to `main`; Actions tests, builds and publishes. Two traps already hit:
   without it; the Actions runs and jobs endpoints do not.
 - **Enabling Pages does not retrigger the workflow.** Already enabled now, so
   this only matters if Pages is ever reconfigured.
+- **`gh` is not installed, and the unauthenticated Actions API rate-limits
+  hard.** Three concurrent 15-second poll loops exhausted it on 2026-08-11 and it
+  started returning `403` for the rest of the session. Worse, each loop only
+  matched the *success* pattern, so a 403 body looked identical to "still
+  running" and they polled forever.
+  **Verify a deploy against the live site instead**, which is not rate-limited:
+  read `sw.js` for the current `assets/index-*.js` hash, then `grep` that bundle
+  for a string unique to the change. Any watcher must exit on failure and on
+  timeout as well as on success — silence is not success.
+- **Proving the no-copyright policy on a deploy:** `grep` the live bundle for
+  `That Funny Feeling` (absent) and `Format Test` (present). Verified this way on
+  every deploy of 2026-08-11.
 
 ### The LAN dev server
 
@@ -379,9 +402,28 @@ relaunching lands back on it; a backup captures all songs and prefs, and restore
 a deleted song without restamping the untouched ones; deleting everything leaves
 an empty library that does not reseed.
 
+**Verified on the iPad**: a `.lcf` selects from the Files picker, opens, and
+backs up.
+
+**Not yet proven — the honest gaps in 4b:**
+
+- **The storage-failure branch has never run.** An IndexedDB that refuses to open
+  is meant to leave the songs in memory with a warning; that path is reasoned,
+  not demonstrated. It is the one you would hit on a bad day.
+- **Only the share-sheet path has been used on iOS.** The anchor-download
+  fallback in `download.ts` is untested on the device, and would be what a future
+  iPadOS falls back to if `navigator.canShare` ever stops accepting files.
+- **No test covers a library round trip through IndexedDB**, only the pure logic
+  either side of it. `db.ts` is proven by hand in the preview pane.
+
 ---
 
-## Next: Phase 5 — Setlists
+## Next: real-world testing, then Phase 5 — Setlists
+
+**First**: whatever comes back from Matt's testing of import, backup and updating
+songs against real charts. Fixes land before new work. See *Start here*.
+
+**Then Phase 5:**
 
 - The hook is already in place: `usePerformance` takes an `onEnd` callback fired
   by the confirming press at the end of a song, currently passed as `undefined`.
