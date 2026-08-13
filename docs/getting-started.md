@@ -15,7 +15,7 @@ screen, the browser puts it there.
 The path is **case-sensitive** — `LiveChart` with two capitals. `livechart`
 gets you a 404.
 
-Tested on Chrome, Firefox and Safari, on iPad, Mac and PC. It's built for the
+Tested on Chrome, Firefox and Safari, on iPad, and PC. It's built for the
 iPad, but it behaves the same everywhere; a laptop is a perfectly good place to
 write and check charts.
 
@@ -63,7 +63,7 @@ Even installed, keep a backup. See
 ### Set your Auto-Lock longer
 
 Before your first gig, go to **Settings → Display & Brightness → Auto-Lock** and
-give yourself some room — 5 minutes, or Never.
+give yourself some room — 15 minutes, or Never.
 
 The app does ask iOS to keep the screen awake during performance mode, and while
 you're playing and working the pedal it holds. What it can't do yet is override
