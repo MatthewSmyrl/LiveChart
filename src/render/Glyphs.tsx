@@ -103,7 +103,7 @@ export function RepeatBar(props: GlyphProps) {
 
 /**
  * Pick the rest glyph from how many beat slots the token occupies.
- * This is why rests needed no duration syntax — see LCF-SPEC.md §5.1.
+ * This is why rests needed no duration syntax — see docs/lcf-format.md, "Rests".
  */
 export function RestGlyph({ beats, barBeats, size }: { beats: number; barBeats: number; size?: number }) {
   if (beats >= barBeats) return <WholeRest size={size} />;

@@ -1,5 +1,5 @@
 /**
- * LCF parser — see LCF-SPEC.md.
+ * LCF parser — see docs/lcf-format.md.
  *
  * Contract: this module is pure and never throws on malformed input. Problems
  * are reported as `song.errors` / `song.warnings` so the import view can show
@@ -206,7 +206,7 @@ interface SourceLine {
   line: number;
 }
 
-/** A comment only at line start — never mid-lyric. See LCF-SPEC.md §7. */
+/** A comment only at line start — never mid-lyric. See docs/lcf-format.md, "Comments". */
 function isCommentLine(trimmed: string): boolean {
   return trimmed.startsWith('--');
 }

@@ -1,6 +1,6 @@
 /**
  * Type model for the LiveChart Format (LCF).
- * See LCF-SPEC.md — this file is the executable counterpart of that document.
+ * See docs/lcf-format.md — this file is the executable counterpart of that document.
  */
 
 export interface TimeSignature {

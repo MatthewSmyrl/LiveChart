@@ -20,8 +20,12 @@ It is a personal tool, published only so it can be installed to a home screen.
 - **Offline.** A service worker precaches the whole build; once installed it
   never needs the network.
 
-`LCF-SPEC.md` defines the `.lcf` chart format. `STATUS.md` carries the current
-phase, the decisions that are settled, and why.
+**[The user guide is in `docs/`](docs/README.md)** — design intentions, install,
+use, and how to write a chart.
+
+[`docs/lcf-format.md`](docs/lcf-format.md) is the `.lcf` format — guide and
+definition in one document, so the two can't drift apart. `STATUS.md` carries
+the current phase, the decisions that are settled, and why.
 
 ## Songs
 

@@ -1,6 +1,6 @@
 # LiveChart — project status
 
-**Last updated:** 2026-08-11 · **Phases 0–4b complete** · 102 tests locally,
+**Last updated:** 2026-08-13 · **Phases 0–4b complete** · 102 tests locally,
 94 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
 
 ---
@@ -19,6 +19,14 @@ surface what needs changing, and any fixes come before new work.
 
 **Phase 5 — setlists** is the next piece of work once that settles. Do not start
 it without checking in; the testing may well reorder the list.
+
+**The user guide landed 2026-08-13** — it is in `docs/`, and
+**`docs/lcf-format.md` is now the format definition**. `LCF-SPEC.md` no longer
+exists; it was folded in and deleted, so a code change that touches the format
+must update the guide in the same pass. Matt is reviewing the guide. It is
+written for players, so keep unbuilt features out of it — and when Phase 5
+ships, the guide gains a setlists chapter and finally gets its Help link on the
+library screen. See *Documentation* under Done.
 
 Nothing is blocked. Everything below is done and deployed.
 
@@ -196,7 +204,7 @@ Still useful for testing a real chart, since the deployed build has none.
 
 ## Decisions locked in
 
-All of these are settled and reflected in the code and in `LCF-SPEC.md`.
+All of these are settled and reflected in the code and in `docs/lcf-format.md`.
 
 | Decision | Choice |
 |---|---|
@@ -235,7 +243,9 @@ All of these are settled and reflected in the code and in `LCF-SPEC.md`.
 ## Done
 
 ### Phase 0 — Format spec
-- `LCF-SPEC.md` — the full format definition.
+- The full format definition. Written as `LCF-SPEC.md`; folded into
+  `docs/lcf-format.md` on 2026-08-13 and that file deleted — see *Documentation*
+  below.
 - The song in v1.0 form, 162 → 115 lines. Exercises every tricky rule, so it
   doubles as the golden test fixture. Now at `songs/local/That Funny Feeling.lcf`
   and gitignored; the originals (`.lcf` / `.html` / `.pdf` in the project root)
@@ -416,6 +426,38 @@ backs up.
 - **No test covers a library round trip through IndexedDB**, only the pure logic
   either side of it. `db.ts` is proven by hand in the preview pane.
 
+### Documentation — user guide · 2026-08-13
+
+`docs/` holds the user guide: a landing page plus *Why it works this way*,
+*Getting the app*, *Using LiveChart*, *Songs, import and backup*, and the format
+chapter. Written for players rather than for this project — friends and
+enthusiasts, some of whom we don't know. It deliberately says nothing about
+setlists or transpose; those get written up when they ship.
+
+**`LCF-SPEC.md` was folded into `docs/lcf-format.md` and deleted.** One document
+is now both the writing guide and the definition the parser is written against.
+Two versions of the format was a standing invitation to drift, and the format is
+the part of the documentation most likely to be read and re-read.
+
+No stub was left behind: every reference — `README.md`, this file, and comments
+in `parse.ts`, `types.ts` and `Glyphs.tsx` — points at the guide instead. The
+original file is in the history if it is ever wanted; the last commit carrying
+it is the one before the 2026-08-13 documentation work.
+
+Two things the old spec claimed that the code never did, corrected rather than
+carried across:
+
+- **Tap zones** as left/right halves. They are three stacked bands — 12% menu,
+  33% back, 55% advance — and have been since Phase 3.
+- **A song info panel.** There isn't one. `Notes` and unrecognised attributes
+  are parsed into `meta.extra` and survive backup and export, but nothing
+  renders them. The guide says so plainly; if a panel ever lands, that paragraph
+  is what changes.
+
+The navigation contract from the old §10 lives on as an appendix to the format
+chapter — it constrains the parser's output shape, so it belongs with the
+format, corrected on the same two points and with the forward cap added.
+
 ---
 
 ## Next: real-world testing, then Phase 5 — Setlists
@@ -432,6 +474,14 @@ songs against real charts. Fixes land before new work. See *Start here*.
   image-only, no text layer), transpose, sharing.
 
 ### Smaller ideas, not yet scheduled
+- **Ship the guide inside the app — deferred deliberately, 2026-08-13.** Matt
+  wants a Help entry on the **Songs** screen, not the performance toolbar, which
+  is already six buttons wide and hides itself mid-song. Held until the library
+  screen settles, since Phase 5 is about to change it — no point wiring a button
+  into a screen that is being rebuilt. The work: build `docs/` to HTML into
+  `public/guide/`, add it to the service-worker precache so it reads offline at
+  a gig, and link it from `LibraryView`. Do this when Phase 5 lands, and update
+  the guide for setlists in the same pass.
 - **Toggling lyrics mid-song.** The per-song `Lyrics:` default landed on
   2026-08-11, so the decision is now carried by the file. What is still missing
   is changing your mind *during* a song: the Lyrics button lives in the toolbar
