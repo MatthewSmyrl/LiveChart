@@ -15,7 +15,7 @@ screen, the browser puts it there.
 The path is **case-sensitive** — `LiveChart` with two capitals. `livechart`
 gets you a 404.
 
-Tested on Chrome, Firefox and Safari, on iPad, and PC. It's built for the
+Tested on Chrome, Firefox and Safari, on iPad and PC. It's built for the
 iPad, but it behaves the same everywhere; a laptop is a perfectly good place to
 write and check charts.
 
