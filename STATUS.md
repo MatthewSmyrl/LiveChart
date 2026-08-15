@@ -5,28 +5,41 @@
 
 ---
 
-## ⏳ Start here — Matt is doing real-world testing
+## ⏳ Start here — Matt is testing on the iPad
 
-**The app is usable on the iPad for the first time.** Confirmed on the device
-2026-08-11: a `.lcf` selects from the Files picker, opens, and backs up. That
-closes the gap that ran through the whole project — until now the choice was the
-deployed PWA with only the fixture, or a LAN dev server with no wake lock.
+**Two things are waiting on the device, and both came from him, so ask before
+planning anything.**
 
-**Matt has paused development to use it properly**: writing more `.lcf` files and
-exercising import, backup and updating songs against real material. **Ask what
-came out of that before planning anything** — the point of the exercise is to
-surface what needs changing, and any fixes come before new work.
+**1. The guide inside the app** — merged and deployed 2026-08-13, never yet
+opened on an iPad. A *Guide* button on the Songs screen opens six static pages
+under `guide/`, precached for offline. What to ask about, in order:
 
-**Phase 5 — setlists** is the next piece of work once that settles. Do not start
-it without checking in; the testing may well reorder the list.
+- Does tapping **Guide** stay inside the installed app, or bounce out to Safari?
+  This is the one genuine unknown. It is a same-origin navigation served by the
+  service worker, so it should stay put — but standalone mode is where that
+  assumption deserves testing rather than trusting.
+- Does **← Back to LiveChart** land back in the app with the library as he left
+  it? Without a browser back button, that link is the only way home.
+- Does it read well at arm's length, and is the wording right now it is somewhere
+  people will actually meet it?
 
-**The user guide landed 2026-08-13**, reviewed and merged, and it is now
-**readable inside the app** — a *Guide* button on the Songs screen, served from
-`docs/` and precached for offline. **`docs/lcf-format.md` is the format
-definition**; `LCF-SPEC.md` no longer exists, so a code change that touches the
-format must update the guide in the same pass. It is written for players, so
-keep unbuilt features out of it — and when Phase 5 ships, the guide gains a
-setlists chapter. See *Documentation* under Done.
+**He must force-quit and relaunch first.** There is deliberately no
+`skipWaiting`, so a resumed app is still the old build with no Guide button at
+all — which looks exactly like a broken deploy.
+
+**2. Real-world use of import and backup**, from 2026-08-11 and still open:
+writing more `.lcf` files and exercising import, backup and updating songs
+against real material. The point is to surface what needs changing. **Fixes from
+either of these come before new work.**
+
+**Then Phase 5 — setlists.** Do not start it without checking in; the testing
+may well reorder the list. When it lands it also moves the Guide button, since
+Phase 5 rebuilds that screen, and the guide gains a setlists chapter.
+
+**One standing rule now:** `docs/lcf-format.md` is the format definition —
+`LCF-SPEC.md` no longer exists — so a code change touching the format updates the
+guide in the same pass. The guide is written for players, so keep unbuilt
+features out of it.
 
 Nothing is blocked. Everything below is done and deployed.
 
@@ -38,6 +51,7 @@ Nothing is blocked. Everything below is done and deployed.
 | **Offline** — Airplane Mode, relaunch | ✅ Renders as expected; the service worker is doing its job |
 | **Wake lock** | ✅ **In pedal use.** See below — the answer is subtler than it looks |
 | **Import a `.lcf`** | ✅ Selects, opens and backs up — after the `accept` fix, see Phase 4b |
+| **The in-app guide** | ⏳ Deployed 2026-08-13, untested on the device. See *Start here* |
 
 **Force-quit and relaunch after every deploy.** There is deliberately no
 `skipWaiting`, so a resumed app is still running the old version — which makes a
@@ -507,14 +521,18 @@ the app with the library where you left it.
 
 ## Next: real-world testing, then Phase 5 — Setlists
 
-**First**: whatever comes back from Matt's testing of import, backup and updating
-songs against real charts. Fixes land before new work. See *Start here*.
+**First**: whatever comes back from the iPad — the in-app guide, and the older
+run at import, backup and updating songs against real charts. Fixes land before
+new work. See *Start here* for what to ask about each.
 
 **Then Phase 5:**
 
 - The hook is already in place: `usePerformance` takes an `onEnd` callback fired
   by the confirming press at the end of a song, currently passed as `undefined`.
   The library gives it something to advance *to*.
+- It rebuilds the Songs screen, so it inherits two loose ends: the **Guide
+  button's placement**, which was always provisional, and a **setlists chapter**
+  for the guide — written in the same pass as the code, per the standing rule.
 - **Deferred past v1** — in-app editor, PDF/OCR import (the source PDF is
   image-only, no text layer), transpose, sharing.
 
