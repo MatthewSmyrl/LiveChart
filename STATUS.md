@@ -20,13 +20,13 @@ surface what needs changing, and any fixes come before new work.
 **Phase 5 — setlists** is the next piece of work once that settles. Do not start
 it without checking in; the testing may well reorder the list.
 
-**The user guide landed 2026-08-13** — it is in `docs/`, and
-**`docs/lcf-format.md` is now the format definition**. `LCF-SPEC.md` no longer
-exists; it was folded in and deleted, so a code change that touches the format
-must update the guide in the same pass. Matt is reviewing the guide. It is
-written for players, so keep unbuilt features out of it — and when Phase 5
-ships, the guide gains a setlists chapter and finally gets its Help link on the
-library screen. See *Documentation* under Done.
+**The user guide landed 2026-08-13**, reviewed and merged, and it is now
+**readable inside the app** — a *Guide* button on the Songs screen, served from
+`docs/` and precached for offline. **`docs/lcf-format.md` is the format
+definition**; `LCF-SPEC.md` no longer exists, so a code change that touches the
+format must update the guide in the same pass. It is written for players, so
+keep unbuilt features out of it — and when Phase 5 ships, the guide gains a
+setlists chapter. See *Documentation* under Done.
 
 Nothing is blocked. Everything below is done and deployed.
 
@@ -458,6 +458,51 @@ The navigation contract from the old §10 lives on as an appendix to the format
 chapter — it constrains the parser's output shape, so it belongs with the
 format, corrected on the same two points and with the forward cap added.
 
+### The guide inside the app · 2026-08-13
+
+Brought forward from Phase 5 on Matt's call: low risk, and worth a lot to anyone
+testing the app. Only the button placement is provisional — the Songs screen is
+what Phase 5 rebuilds.
+
+- `build/guide.ts` — a Vite plugin that renders `docs/*.md` into `dist/guide/`
+  at build time, plus `build/guide.css`. `docs/README.md` becomes `index.html`,
+  so `guide/` resolves on its own.
+- **`marked` as a devDependency.** Against the instinct that hand-wrote the
+  service worker and `db.ts`, and right anyway: markdown is a settled standard,
+  this runs at build time only, and nothing ships to the browser. Hand-rolling a
+  parser that survives the guide's tables and fences is the worse trade.
+- **The Songs screen gets a `Guide` link**, an `<a class="btn">` rather than a
+  button, since it navigates rather than changing state. `a.btn` in `styles.css`
+  gives it the centring a button gets for free.
+- **Every page carries "← Back to LiveChart".** Launched from the home screen
+  there is no browser chrome and no back button, so without it the guide is a
+  one-way trip out of the app mid-set.
+- The pages read the app's `lc.theme` inline before paint, so opening the guide
+  from a dark stage doesn't flash white.
+- **Offline came free**: `serviceWorker.ts` walks the whole of `dist`, so the
+  seven guide files joined the precache with no change to it — 8 files to 15.
+
+**Two things that were wrong before they were checked**, both found by looking
+at the built output rather than trusting it:
+
+- **`marked` does not emit heading `id`s.** Every in-page anchor in the guide
+  was dead — the format chapter's entire contents list, and every cross-page
+  link like `songs.html#backing-up-and-why-you-should`. `addHeadingIds` now
+  applies GitHub's slug rule, because that is the shape the links were written
+  in and GitHub is where the guide is also read. **If a heading link ever
+  breaks, look there first.**
+- Tab titles carried raw markdown — *The \`.lcf\` format*.
+
+**Verified in the preview pane:** all 54 internal links across the six pages
+resolve, anchors included; the Guide button opens the guide and the back link
+returns to the app; light and dark both follow `lc.theme`; and no page scrolls
+sideways at 390px, since the wide reference tables scroll inside themselves.
+
+**Not yet proven:** none of this has been on the iPad. The thing to check there
+is the standalone PWA — whether tapping *Guide* keeps you inside the installed
+app rather than bouncing out to Safari, and whether the back link returns you to
+the app with the library where you left it.
+
 ---
 
 ## Next: real-world testing, then Phase 5 — Setlists
@@ -474,14 +519,6 @@ songs against real charts. Fixes land before new work. See *Start here*.
   image-only, no text layer), transpose, sharing.
 
 ### Smaller ideas, not yet scheduled
-- **Ship the guide inside the app — deferred deliberately, 2026-08-13.** Matt
-  wants a Help entry on the **Songs** screen, not the performance toolbar, which
-  is already six buttons wide and hides itself mid-song. Held until the library
-  screen settles, since Phase 5 is about to change it — no point wiring a button
-  into a screen that is being rebuilt. The work: build `docs/` to HTML into
-  `public/guide/`, add it to the service-worker precache so it reads offline at
-  a gig, and link it from `LibraryView`. Do this when Phase 5 lands, and update
-  the guide for setlists in the same pass.
 - **Toggling lyrics mid-song.** The per-song `Lyrics:` default landed on
   2026-08-11, so the decision is now carried by the file. What is still missing
   is changing your mind *during* a song: the Lyrics button lives in the toolbar

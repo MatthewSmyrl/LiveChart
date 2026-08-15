@@ -99,6 +99,13 @@ export function LibraryView({
           <button className="btn" onClick={() => void exportAll()}>
             Back up
           </button>
+          {/* A plain link, not a router: the guide is static pages emitted at
+              build time, precached with everything else, and each one carries
+              its own way back — which matters, because launched from the home
+              screen there is no browser chrome to go back with. */}
+          <a className="btn" href="./guide/index.html">
+            Guide
+          </a>
           <button className="btn btn--on" onClick={onClose} disabled={!currentId}>
             Done
           </button>

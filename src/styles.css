@@ -126,6 +126,16 @@ body {
   color: var(--error);
 }
 
+/* The Guide is a link rather than a button — it navigates to a static page
+   instead of changing app state — so it needs the centring a button gets for
+   free, and none of the underline. */
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 /* ------------------------------------------------------------------ library */
 
 .library {
