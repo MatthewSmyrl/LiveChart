@@ -5,34 +5,24 @@
 
 ---
 
-## ⏳ Start here — Matt is testing on the iPad
+## ⏳ Start here — Matt is using it against real charts
 
-**Two things are waiting on the device, and both came from him, so ask before
-planning anything.**
+**The in-app guide is done and confirmed on the device.** Matt retested
+2026-08-15 after the service-worker fix — Chrome, the iPad home-screen app, and
+Airplane Mode — and all of it works: the Guide button opens, the chapter links
+navigate, and ← Back to LiveChart returns to the app. **The standalone-PWA
+question is answered**: the guide stays inside the installed app. Nothing is
+outstanding on it.
 
-**1. The guide inside the app** — deployed 2026-08-13, **shipped broken, fixed
-2026-08-15**. It opened to a white screen everywhere the service worker was
-live; see *The guide shipped broken* under Done for the cause and for why two
-green verifications missed it. Re-test from the top:
+**What is still open is the older thread, from 2026-08-11:** real-world use of
+import and backup — writing more `.lcf` files and exercising import, backup and
+updating songs against real material. The point is to surface what needs
+changing, so **ask what came out of it before planning anything**, and fixes
+from it come before new work.
 
-- Does **Guide** open the guide at all? This is the fix, and it has been proven
-  against the built site with the worker running, but not on the device.
-- Does tapping it stay inside the installed app, or bounce out to Safari? Still
-  the genuine unknown — standalone mode is where that assumption deserves
-  testing rather than trusting.
-- Does **← Back to LiveChart** land back in the app with the library as he left
-  it? Without a browser back button, that link is the only way home.
-- Does it read well at arm's length, and is the wording right now it is somewhere
-  people will actually meet it?
-
-**He must force-quit and relaunch first.** There is deliberately no
-`skipWaiting`, so a resumed app is still the old build with no Guide button at
-all — which looks exactly like a broken deploy.
-
-**2. Real-world use of import and backup**, from 2026-08-11 and still open:
-writing more `.lcf` files and exercising import, backup and updating songs
-against real material. The point is to surface what needs changing. **Fixes from
-either of these come before new work.**
+**Whenever a deploy is being tested, force-quit and relaunch first.** There is
+deliberately no `skipWaiting`, so a resumed app is still the old build — which
+is precisely what made the fixed guide keep showing a white screen.
 
 **Then Phase 5 — setlists.** Do not start it without checking in; the testing
 may well reorder the list. When it lands it also moves the Guide button, since
@@ -53,7 +43,7 @@ Nothing is blocked. Everything below is done and deployed.
 | **Offline** — Airplane Mode, relaunch | ✅ Renders as expected; the service worker is doing its job |
 | **Wake lock** | ✅ **In pedal use.** See below — the answer is subtler than it looks |
 | **Import a `.lcf`** | ✅ Selects, opens and backs up — after the `accept` fix, see Phase 4b |
-| **The in-app guide** | ⏳ Deployed 2026-08-13, untested on the device. See *Start here* |
+| **The in-app guide** | ✅ **Confirmed 2026-08-15**, including offline in Airplane Mode. Opens inside the installed app rather than bouncing out to Safari |
 
 **Force-quit and relaunch after every deploy.** There is deliberately no
 `skipWaiting`, so a resumed app is still running the old version — which makes a
@@ -547,10 +537,11 @@ Matt hit; it was a trap waiting for a different host.
 guide renders offline, the back link boots the app with the chart on screen, and
 every precached URL answers 200.
 
-**Not yet proven:** none of this has been on the iPad. The thing to check there
-is the standalone PWA — whether tapping *Guide* keeps you inside the installed
-app rather than bouncing out to Safari, and whether the back link returns you to
-the app with the library where you left it.
+**Confirmed on the device, 2026-08-15**, after the fix below: Chrome, the iPad
+home-screen app, and Airplane Mode. The Guide button opens, the chapter links
+navigate, and the back link returns to the app. **Tapping *Guide* keeps you
+inside the installed app** — it does not bounce out to Safari, which was the one
+thing that could not be tested anywhere but the device.
 
 ---
 
