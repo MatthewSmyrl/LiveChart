@@ -11,6 +11,16 @@ const CACHE = '__CACHE__';
 const ASSETS = __ASSETS__;
 const INDEX = '__INDEX__';
 
+/**
+ * Match on the URL alone.
+ *
+ * The cache holds exactly one response per URL, so a `Vary` header on what a
+ * server happened to send can only ever cause a miss — and a miss offline is a
+ * blank screen. `vite preview` sends `Vary: Origin`, which is enough to make a
+ * module script unreachable offline while everything looks fine online.
+ */
+const LOOKUP = { ignoreVary: true };
+
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
   // Deliberately no skipWaiting: a new version must never swap itself in under
@@ -33,14 +43,34 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   if (new URL(request.url).origin !== self.location.origin) return;
 
-  // Every navigation resolves to the app shell — the chart is a single page.
+  // A navigation to a page the build actually contains is served as that page;
+  // only what the build does not contain falls through to the app shell, since
+  // the chart is a single page and any other route belongs to it.
+  //
+  // The order matters and is not cosmetic. Answering every navigation with the
+  // shell served the app's own index.html at `guide/index.html`, where its
+  // relative asset URLs resolved a directory too deep, 404'd, and left a white
+  // screen — invisible in dev, which has no worker at all.
   if (request.mode === 'navigate') {
-    event.respondWith(caches.match(INDEX).then((hit) => hit ?? fetch(request)));
+    event.respondWith(
+      (async () => {
+        const url = new URL(request.url);
+        // A directory URL means its index, the way a web server resolves it.
+        const paths = url.pathname.endsWith('/')
+          ? [url.pathname + 'index.html', url.pathname]
+          : [url.pathname];
+        for (const path of paths) {
+          const page = await caches.match(path, LOOKUP);
+          if (page) return page;
+        }
+        return (await caches.match(INDEX, LOOKUP)) ?? fetch(request);
+      })(),
+    );
     return;
   }
 
   event.respondWith(
-    caches.match(request).then(
+    caches.match(request, LOOKUP).then(
       (hit) =>
         hit ??
         fetch(request).catch(() => {

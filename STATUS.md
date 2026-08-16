@@ -10,14 +10,16 @@
 **Two things are waiting on the device, and both came from him, so ask before
 planning anything.**
 
-**1. The guide inside the app** — merged and deployed 2026-08-13, never yet
-opened on an iPad. A *Guide* button on the Songs screen opens six static pages
-under `guide/`, precached for offline. What to ask about, in order:
+**1. The guide inside the app** — deployed 2026-08-13, **shipped broken, fixed
+2026-08-15**. It opened to a white screen everywhere the service worker was
+live; see *The guide shipped broken* under Done for the cause and for why two
+green verifications missed it. Re-test from the top:
 
-- Does tapping **Guide** stay inside the installed app, or bounce out to Safari?
-  This is the one genuine unknown. It is a same-origin navigation served by the
-  service worker, so it should stay put — but standalone mode is where that
-  assumption deserves testing rather than trusting.
+- Does **Guide** open the guide at all? This is the fix, and it has been proven
+  against the built site with the worker running, but not on the device.
+- Does tapping it stay inside the installed app, or bounce out to Safari? Still
+  the genuine unknown — standalone mode is where that assumption deserves
+  testing rather than trusting.
 - Does **← Back to LiveChart** land back in the app with the library as he left
   it? Without a browser back button, that link is the only way home.
 - Does it read well at arm's length, and is the wording right now it is somewhere
@@ -511,6 +513,39 @@ at the built output rather than trusting it:
 resolve, anchors included; the Guide button opens the guide and the back link
 returns to the app; light and dark both follow `lc.theme`; and no page scrolls
 sideways at 390px, since the wide reference tables scroll inside themselves.
+
+**The guide shipped broken, and the bug was in the service worker · fixed
+2026-08-15.** Matt got a **white screen** from Songs → Guide on the deployed
+site, on both the iPad and Chrome on a PC, while the same build worked from the
+dev server.
+
+`sw-template.js` answered *every* navigation with the app shell, which is right
+for a single-page app and wrong the moment the build contains a second page. So
+`guide/index.html` was served the app's own `index.html`, whose relative asset
+URLs then resolved a directory too deep, 404'd, and left nothing on screen. It
+now serves a precached page as itself and only falls through to the shell for
+routes the build does not contain — a directory URL resolving to its
+`index.html`, the way a web server would.
+
+**Why it got through**, which matters more than the bug: the dev server has no
+service worker, and `WebFetch` does not run one either. Both checks that passed
+were checks the worker never saw. **A service worker change is only tested
+against the built site with the worker live** — `.claude/launch.json` now has a
+`livechart-built` entry (`vite preview`, port 4173) for exactly this, and
+stopping that server is a real offline test.
+
+Doing that turned up a **second fault the first one was hiding**: with the
+server stopped, the app itself would not boot, because `caches.match` honours
+`Vary` and `vite preview` sends `Vary: Origin`. The page's module script carries
+an `Origin` header the worker's own precache fetch did not, so the entry was
+there and unreachable. Lookups now pass `ignoreVary` — the cache holds one
+response per URL, so `Vary` can only ever cause a miss, and a miss offline is a
+blank screen. GitHub Pages does not send that header, so this was never what
+Matt hit; it was a trap waiting for a different host.
+
+**Verified against the built site with the worker active, server stopped:** the
+guide renders offline, the back link boots the app with the chart on screen, and
+every precached URL answers 200.
 
 **Not yet proven:** none of this has been on the iPad. The thing to check there
 is the standalone PWA — whether tapping *Guide* keeps you inside the installed
