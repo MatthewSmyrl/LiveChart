@@ -1,27 +1,32 @@
 # LiveChart — project status
 
-**Last updated:** 2026-08-17 · **Phases 0–5 complete** · 122 tests locally,
-114 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
+**Last updated:** 2026-08-17 · **Phases 0–5 complete and deployed** · 122 tests
+locally, 114 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
 
 ---
 
-## ⏳ Start here — Phase 5 is built but has never met the iPad
+## ⏳ Start here — Phase 5 is deployed and waiting on the iPad
 
-**Setlists are done and verified in the browser, and not deployed.** Everything
-in *Phase 5* below was exercised against the built site with the service worker
-live: building a set, reordering it, the two-press advance and retreat, the
-backup round trip, and the version 1 → 2 database upgrade. **None of it has been
-near the pedal.** That is the next thing.
+**Setlists shipped 2026-08-17** (`c1a2f1e`) and are verified live: the Phase 5
+strings are in the deployed bundle, the guide's setlists chapter answers 200, 16
+files precache, and the no-copyright check still passes — *That Funny Feeling*
+absent, *Format Test* present.
+
+**Matt is testing on the iPad with the pedal. Ask how that went before starting
+anything.** Everything in *Phase 5* below was proven in the browser against the
+built site with the worker live, but **none of it has been near a real pedal**,
+which is the only thing that settles whether a running order feels right at a
+gig. Fixes from that run come before new work.
 
 **The real-world import and backup thread is closed** — Matt confirmed
 2026-08-17 that writing `.lcf` files, importing, backing up and updating songs
 all held up against real material, with nothing to fix. It no longer needs
 asking about.
 
-**What to ask about after an iPad run:** whether the two-press retreat at the
-top of a song is right in practice. It was a deliberate call for symmetry, and
-it is the one setlist behaviour that could plausibly annoy — the confirm exists
-so a count-in can't move you, but only a gig proves that.
+**The two-press question is resolved, and is not to be reopened.** Matt's call,
+2026-08-17: two presses in *both* directions. It keeps the two edges consistent
+and makes changing songs "just a touch deliberate, but not arduous." See the
+decision table.
 
 **Whenever a deploy is being tested, force-quit and relaunch first.** There is
 deliberately no `skipWaiting`, so a resumed app is still the old build — which
@@ -253,7 +258,7 @@ All of these are settled and reflected in the code and in `docs/lcf-format.md`.
 | Setlist ids | **Random, not derived from the name.** Renaming is then free, and two devices' "Saturday" sets don't collide when a backup is restored |
 | Start and Delete | **Start is the only button on a setlist's row; deleting a set lives inside the set, behind a confirmation.** They were side by side at first and Matt caught it on sight: on a touchscreen, the control you press in a hurry must not sit next to the one that loses a running order. Start stays one tap because it happens at the top of a gig; delete costs opening the set first, which is the deliberateness it deserves |
 | Reordering | **↑ / ↓ buttons, not drag.** Touch drag inside a scrolling list is the fiddliest interaction on iOS, and this is a screen used standing up before a gig. No wrap at the ends: sending the opener to the end of the night on a mis-tap is a nasty surprise |
-| Moving between songs | **Two presses at both edges, and no wrap.** Forward already needed a confirm so a pedal bounce under a held last chord couldn't skip; back needs the same so a count-in can't retreat. The arms are independent, so arming one edge and pressing the other does nothing. The last song of the set parks rather than looping to the opener |
+| Moving between songs | **Two presses at both edges, and no wrap.** Forward already needed a confirm so a pedal bounce under a held last chord couldn't skip; back needs the same so a count-in can't retreat. The arms are independent, so arming one edge and pressing the other does nothing. The last song of the set parks rather than looping to the opener. **Confirmed by Matt 2026-08-17 and closed**: the symmetry is the point, and it makes changing songs "just a touch deliberate, but not arduous" |
 | Off the set | **Opening a song by hand doesn't cancel the set, it just means position −1.** The readout disappears and the end-of-song press parks. There is deliberately no "next" from off-set: jumping into a running order you had stepped out of is exactly what the confirm exists to prevent |
 | Restoring setlists | **Merged by id, newer `updatedAt` wins.** Restoring last month's backup must not undo a running order fixed this afternoon |
 | Guide button | **Settled in the library header, shared by both tabs.** It is a reference for the whole app, not for either view. This was the provisional placement Phase 5 was meant to resolve |
@@ -609,6 +614,11 @@ position; a backup carrying the set and restoring it after a full wipe; and a
 
 Then, with the server stopped: the app boots offline and the new guide chapter
 renders offline. The precache went 15 files to 16.
+
+**Deployed 2026-08-17** as `c1a2f1e`, and verified against the live site the way
+the *Deploying* section describes: the Phase 5 strings are in the published
+bundle, `guide/setlists.html` answers 200, the precache went 15 files to 16, and
+*That Funny Feeling* is absent from the bundle while *Format Test* is present.
 
 **Not yet proven:** any of it on the iPad, with a pedal. See *Start here*.
 
