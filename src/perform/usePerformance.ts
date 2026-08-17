@@ -13,8 +13,14 @@ export interface PerformanceOptions {
   bindings: Bindings;
   /** Keys are passed through untouched while true — the learn screen wants them raw. */
   suspended: boolean;
-  /** The confirming press at the end of the song. Phase 5 hangs setlists here. */
+  /**
+   * The confirming press past the end of the song: the next song in the
+   * setlist. Undefined when there is nowhere to go, and then the song simply
+   * parks at its end rather than doing something surprising.
+   */
   onEnd?: () => void;
+  /** The confirming press at the top: the previous song in the setlist. */
+  onStart?: () => void;
 }
 
 export interface PerformanceApi {
@@ -22,6 +28,8 @@ export interface PerformanceApi {
   turn: (direction: Direction) => void;
   /** Transient message for the on-screen hint, or null. */
   notice: string | null;
+  /** Say something in that same hint — used to name the song a set lands on. */
+  say: (message: string | null) => void;
 }
 
 /** Document-space extent of every group, in document order. */
@@ -60,9 +68,13 @@ export function usePerformance({
   bindings,
   suspended,
   onEnd,
+  onStart,
 }: PerformanceOptions): PerformanceApi {
   const [notice, setNotice] = useState<string | null>(null);
+  // Two arms, not one. Arming the end and then pressing back must not carry the
+  // confirmation across to the other edge of the song.
   const endArmedAt = useRef(0);
+  const startArmedAt = useRef(0);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   /** Target of a smooth scroll still in flight, or null. */
   const pendingTop = useRef<number | null>(null);
@@ -121,26 +133,34 @@ export function usePerformance({
         direction,
       );
 
+      // Both edges take a second press: a stray tap or a pedal bounce must not
+      // change the song under a held last chord — or under a count-in.
       if (plan.kind === 'edge') {
-        if (direction === 'back') {
-          endArmedAt.current = 0;
-          say('Top of song');
-          return;
-        }
-        // Second press required past the end: a stray tap or a pedal bounce
-        // must not skip to the next song in the middle of a held last chord.
-        if (Date.now() - endArmedAt.current < END_ARM_MS) {
-          endArmedAt.current = 0;
+        const [armedAt, leave, label] =
+          direction === 'back'
+            ? ([startArmedAt, onStart, 'Top of song'] as const)
+            : ([endArmedAt, onEnd, 'End of song'] as const);
+        // The other edge's arm is stale the moment you press this way.
+        (direction === 'back' ? endArmedAt : startArmedAt).current = 0;
+
+        if (!leave) {
+          // Nowhere to go — no setlist, or this is the first or last song of
+          // one. Say so once rather than promising a second press does anything.
+          armedAt.current = 0;
+          say(label);
+        } else if (Date.now() - armedAt.current < END_ARM_MS) {
+          armedAt.current = 0;
           say(null);
-          onEnd?.();
+          leave();
         } else {
-          endArmedAt.current = Date.now();
-          say('End of song — press again');
+          armedAt.current = Date.now();
+          say(`${label} — press again`);
         }
         return;
       }
 
       endArmedAt.current = 0;
+      startArmedAt.current = 0;
       const instant = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       window.scrollTo({ top: plan.top, behavior: instant ? 'auto' : 'smooth' });
 
@@ -152,7 +172,7 @@ export function usePerformance({
         pendingTop.current = null;
       }, 900);
     },
-    [fraction, onEnd, say],
+    [fraction, onEnd, onStart, say],
   );
 
   // Held in a ref so the listener registers once and never misses a press
@@ -182,5 +202,5 @@ export function usePerformance({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  return { turn, notice };
+  return { turn, notice, say };
 }

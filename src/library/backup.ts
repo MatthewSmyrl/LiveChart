@@ -1,8 +1,9 @@
 import { identify, looksLikeChart } from './identity';
-import type { StoredSong } from './types';
+import type { Setlist, StoredSong } from './types';
 
 export const BACKUP_FORMAT = 'livechart-backup';
-export const BACKUP_VERSION = 1;
+/** 2 added `setlists`. A version 1 bundle simply has none, and still restores. */
+export const BACKUP_VERSION = 2;
 
 export interface BackupSong {
   title: string;
@@ -16,6 +17,7 @@ export interface Backup {
   version: number;
   exportedAt: string;
   songs: BackupSong[];
+  setlists: Setlist[];
   /** `lc.*` preferences — font scale, step, theme, pedal bindings. */
   prefs: Record<string, string>;
 }
@@ -29,7 +31,11 @@ export interface Backup {
  * their original source, so a backup can be unpicked by hand if this app ever
  * stops existing.
  */
-export function serializeBackup(songs: StoredSong[], prefs: Record<string, string>): string {
+export function serializeBackup(
+  songs: StoredSong[],
+  prefs: Record<string, string>,
+  setlists: Setlist[] = [],
+): string {
   const backup: Backup = {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
@@ -40,13 +46,16 @@ export function serializeBackup(songs: StoredSong[], prefs: Record<string, strin
       addedAt,
       updatedAt,
     })),
+    // Song ids are derived from titles, so a running order restored here still
+    // points at the right charts.
+    setlists,
     prefs,
   };
   return JSON.stringify(backup, null, 2);
 }
 
 export type ParsedImport =
-  | { kind: 'backup'; songs: BackupSong[]; prefs: Record<string, string> }
+  | { kind: 'backup'; songs: BackupSong[]; setlists: Setlist[]; prefs: Record<string, string> }
   | { kind: 'song'; title: string; text: string }
   | { kind: 'unusable'; reason: string };
 
@@ -104,6 +113,32 @@ function readBackup(json: string): ParsedImport | null {
     }
   }
 
+  // Same rule as the songs: read what we recognise, skip what we can't, and
+  // never refuse the bundle over it. A set with no name or no order is still
+  // worth having as an empty one you can fill in — an entry that isn't an
+  // object at all is not.
+  const setlists: Setlist[] = [];
+  if (Array.isArray(record.setlists)) {
+    for (const entry of record.setlists) {
+      if (typeof entry !== 'object' || entry === null) continue;
+      const set = entry as Record<string, unknown>;
+      if (typeof set.id !== 'string' || !set.id.trim()) continue;
+      const songs = Array.isArray(set.songs)
+        ? set.songs.filter((s): s is string => typeof s === 'string' && !!s.trim())
+        : [];
+      const createdAt = typeof set.createdAt === 'number' ? set.createdAt : 0;
+      setlists.push({
+        id: set.id,
+        name: typeof set.name === 'string' && set.name.trim() ? set.name.trim() : 'Untitled set',
+        songs,
+        createdAt,
+        // Missing means oldest possible, so a set already on the device wins
+        // rather than being overwritten by one carrying no date at all.
+        updatedAt: typeof set.updatedAt === 'number' ? set.updatedAt : createdAt,
+      });
+    }
+  }
+
   const prefs: Record<string, string> = {};
   if (typeof record.prefs === 'object' && record.prefs !== null) {
     for (const [k, v] of Object.entries(record.prefs as Record<string, unknown>)) {
@@ -113,5 +148,5 @@ function readBackup(json: string): ParsedImport | null {
     }
   }
 
-  return { kind: 'backup', songs, prefs };
+  return { kind: 'backup', songs, setlists, prefs };
 }

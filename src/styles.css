@@ -159,8 +159,93 @@ a.btn {
 }
 
 .library__title {
+  display: flex;
+  gap: 0.25rem;
   margin: 0;
   font-size: 1.5rem;
+}
+
+/* Tabs, not buttons: they read as the heading of the screen you are on, which
+   is why the inactive one is dimmed rather than boxed. */
+.library__tab {
+  padding: 0.1rem 0.5rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  cursor: pointer;
+}
+
+.library__tab--on {
+  color: var(--fg);
+  border-bottom-color: var(--accent-edge);
+}
+
+.library__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+}
+
+.library__name {
+  flex: 1;
+  min-height: 2.75rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.5rem;
+  background: var(--bg-raised);
+  color: var(--fg);
+  font: inherit;
+  font-size: 1.15rem;
+}
+
+/* Delete set is the one control here that loses work, so it gets a gap on
+   either side rather than sitting flush against the field and Done. */
+.library__spaced {
+  margin: 0 0.75rem;
+}
+
+.library__grow {
+  flex: 1;
+}
+
+.library__heading {
+  margin: 2rem 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--dim);
+}
+
+/* The position numbers are drawn by hand rather than left to the list marker,
+   because `.library__list` turns markers off and the number has to line up in
+   the flex row with the buttons. */
+.library__pos {
+  min-width: 1.75em;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+  color: var(--dim);
+  text-align: right;
+}
+
+.library__entry {
+  flex: 1;
+  padding: 0.5rem 0.25rem;
+  font-size: 1.25rem;
+}
+
+.library__entry--missing {
+  color: var(--dim);
+  font-style: italic;
+}
+
+/* A second line under the title, so the row stays one tap target. */
+.library__count {
+  display: block;
+  font-size: 0.85rem;
+  font-style: normal;
+  color: var(--dim);
 }
 
 /* Driven by the Import button: a bare file input is a poor tap target. */

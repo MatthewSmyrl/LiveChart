@@ -21,6 +21,7 @@ The path is case-sensitive — it has to be `LiveChart`, not `livechart`.
 | **[Getting the app](getting-started.md)** | Opening it in a browser, installing it on an iPad home screen, and running offline. |
 | **[Using LiveChart](using.md)** | The toolbar, performance mode, tap zones, and teaching the app what your pedal sends. |
 | **[Songs, import and backup](songs.md)** | Getting charts onto the device, updating them, and — importantly — backing them up. |
+| **[Setlists](setlists.md)** | Running orders, and letting the pedal carry you from one song into the next. |
 | **[Writing charts: the `.lcf` format](lcf-format.md)** | The file format, from a two-line example to the full token reference. |
 
 ---
@@ -42,9 +43,9 @@ The path is case-sensitive — it has to be `LiveChart`, not `livechart`.
 
 ## A note on what's here and what isn't
 
-This guide covers what the app does today. Setlists and transposition are on the
-list but not built yet, so they aren't described here — they'll turn up in this
-guide when they turn up in the app.
+This guide covers what the app does today. Transposition is on the list but not
+built yet, so it isn't described here — it'll turn up in this guide when it
+turns up in the app.
 
 [The format chapter](lcf-format.md) is both the writing guide and the formal
 definition the parser is written against. There is deliberately only one

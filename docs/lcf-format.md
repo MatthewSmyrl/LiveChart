@@ -475,4 +475,4 @@ built for.
 
 ---
 
-[← Songs, import and backup](songs.md) · [Guide contents](README.md)
+[← Setlists](setlists.md) · [Guide contents](README.md)

@@ -16,3 +16,22 @@ export interface StoredSong {
   addedAt: number;
   updatedAt: number;
 }
+
+/**
+ * A running order.
+ *
+ * `songs` holds `StoredSong.id`s in playing order. Because those ids are
+ * derived from the title, a setlist survives re-importing an edited chart —
+ * which is the whole reason song identity works that way.
+ *
+ * Entries may repeat and may point at songs that aren't here; see `setlists.ts`.
+ */
+export interface Setlist {
+  /** Random, not derived from the name, so renaming is free. */
+  id: string;
+  name: string;
+  songs: string[];
+  /** ms since epoch. */
+  createdAt: number;
+  updatedAt: number;
+}

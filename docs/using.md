@@ -2,8 +2,9 @@
 
 # Using LiveChart
 
-Two screens, really: the chart, and the song library. This chapter is the chart.
-[Songs, import and backup](songs.md) is the other one.
+Two screens, really: the chart, and the library. This chapter is the chart.
+[Songs, import and backup](songs.md) and [Setlists](setlists.md) are the other
+one.
 
 ---
 
@@ -14,7 +15,7 @@ Along the top, left to right:
 | Control | What it does |
 |---|---|
 | **A−** · **%** · **A+** | Display size, in 10-point steps from 60% to 220%. The reading between them is where you are now. Everything scales together — chords, lyrics, section headers, bar widths. |
-| **Songs** | Opens the library: import, back up, export, delete, and pick what to play. |
+| **Songs** | Opens the library: import, back up, export, delete, pick what to play, and build [setlists](setlists.md). |
 | **Step 75%** | How far one page turn travels — cycles **50% → 75% → 100%**. See [page turns](#page-turns) below. |
 | **Pedal** | The learn screen, for teaching the app what your pedal sends. Also where the screen-awake status lives. |
 | **Lyrics** | Shows or hides the lyric lines. Lit up when they're on. |
@@ -61,9 +62,14 @@ A couple of small behaviours worth recognising when they happen:
 
 - Press back at the top of a song and you'll see **"Top of song"**. That's the
   app telling you there's nothing above, not a dropped press.
-- Press forward at the end and you'll see **"End of song — press again"**. The
-  chart stays where it is. It's a confirmation step so a pedal bounce on a held
-  last chord doesn't do something surprising.
+- Press forward at the end and you'll see **"End of song"**. The chart stays
+  where it is.
+
+With a [setlist](setlists.md) playing, both of those gain a second half —
+*"— press again"* — and the second press moves you to the next or previous song
+in the running order. The confirmation step is there so a pedal bounce on a held
+last chord, or a foot catching the switch during a count-in, doesn't change
+what's on the screen.
 
 ---
 

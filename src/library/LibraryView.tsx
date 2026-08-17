@@ -3,6 +3,7 @@ import { serializeBackup } from './backup';
 import { shareOrDownload } from './download';
 import { fileNameFor } from './identity';
 import { byTitle } from './merge';
+import { SetlistsView } from './SetlistsView';
 import type { StoredSong } from './types';
 import type { ImportOutcome, LibraryApi } from './useLibrary';
 
@@ -20,10 +21,19 @@ function readPrefs(): Record<string, string> {
   return prefs;
 }
 
-function describeImport({ added, replaced, rejected, prefsRestored }: ImportOutcome): string {
+function describeImport({
+  added,
+  replaced,
+  setsAdded,
+  setsReplaced,
+  rejected,
+  prefsRestored,
+}: ImportOutcome): string {
   const parts: string[] = [];
   if (added) parts.push(`${added} song${added === 1 ? '' : 's'} added`);
   if (replaced) parts.push(`${replaced} updated`);
+  if (setsAdded) parts.push(`${setsAdded} setlist${setsAdded === 1 ? '' : 's'} added`);
+  if (setsReplaced) parts.push(`${setsReplaced} setlist${setsReplaced === 1 ? '' : 's'} updated`);
   if (prefsRestored) parts.push('settings restored — they apply next launch');
   for (const { name, reason } of rejected) parts.push(`skipped ${name}: ${reason}`);
   return parts.length ? parts.join(' · ') : 'Nothing to import.';
@@ -39,19 +49,24 @@ function describeImport({ added, replaced, rejected, prefsRestored }: ImportOutc
 export function LibraryView({
   library,
   currentId,
+  activeSetId,
   onOpen,
+  onStartSet,
   onClose,
 }: {
   library: LibraryApi;
   currentId: string | null;
+  activeSetId: string | null;
   onOpen: (id: string) => void;
+  onStartSet: (setlistId: string) => void;
   onClose: () => void;
 }) {
-  const { songs, error, importFiles, remove } = library;
+  const { songs, setlists, error, importFiles, remove, saveSet, removeSet } = library;
   const fileInput = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<'songs' | 'setlists'>('songs');
 
   const onPick = async (list: FileList | null) => {
     if (!list || list.length === 0) return;
@@ -72,13 +87,15 @@ export function LibraryView({
       return;
     }
     const stamp = new Date().toISOString().slice(0, 10);
+    const sets = setlists ?? [];
     const outcome = await shareOrDownload(
       `LiveChart backup ${stamp}.json`,
       'application/json',
-      serializeBackup(all, readPrefs()),
+      serializeBackup(all, readPrefs(), sets),
     );
     if (outcome !== 'cancelled') {
-      setNotice(`Backed up ${all.length} song${all.length === 1 ? '' : 's'}.`);
+      const setPart = sets.length ? ` and ${sets.length} setlist${sets.length === 1 ? '' : 's'}` : '';
+      setNotice(`Backed up ${all.length} song${all.length === 1 ? '' : 's'}${setPart}.`);
     }
   };
 
@@ -91,7 +108,24 @@ export function LibraryView({
   return (
     <div className="library">
       <div className="library__bar">
-        <h1 className="library__title">Songs</h1>
+        {/* Two tabs over one header, because Import, Back up and the Guide all
+            belong to the library as a whole rather than to either view. */}
+        <h1 className="library__title">
+          <button
+            className={`library__tab ${tab === 'songs' ? 'library__tab--on' : ''}`}
+            onClick={() => setTab('songs')}
+            aria-pressed={tab === 'songs'}
+          >
+            Songs
+          </button>
+          <button
+            className={`library__tab ${tab === 'setlists' ? 'library__tab--on' : ''}`}
+            onClick={() => setTab('setlists')}
+            aria-pressed={tab === 'setlists'}
+          >
+            Setlists
+          </button>
+        </h1>
         <div className="toolbar__group">
           <button className="btn" onClick={() => fileInput.current?.click()} disabled={busy}>
             {busy ? 'Reading…' : 'Import'}
@@ -102,7 +136,10 @@ export function LibraryView({
           {/* A plain link, not a router: the guide is static pages emitted at
               build time, precached with everything else, and each one carries
               its own way back — which matters, because launched from the home
-              screen there is no browser chrome to go back with. */}
+              screen there is no browser chrome to go back with.
+
+              Its home is settled here, in the header shared by both tabs: it is
+              a reference for the whole app, not for either view. */}
           <a className="btn" href="./guide/index.html">
             Guide
           </a>
@@ -134,8 +171,17 @@ export function LibraryView({
         </p>
       )}
 
-      {songs === null ? (
+      {songs === null || setlists === null ? (
         <p className="library__empty">Opening the library…</p>
+      ) : tab === 'setlists' ? (
+        <SetlistsView
+          songs={songs}
+          setlists={setlists}
+          activeSetId={activeSetId}
+          onSave={(set) => void saveSet(set)}
+          onRemove={(id) => void removeSet(id)}
+          onStart={onStartSet}
+        />
       ) : songs.length === 0 ? (
         <p className="library__empty">
           No songs yet. <b>Import</b> a <code>.lcf</code> chart, or a backup bundle to restore

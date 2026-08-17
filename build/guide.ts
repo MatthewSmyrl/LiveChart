@@ -32,10 +32,14 @@ function titleFor(markdown: string): string {
  * anchors, because that is where it is also read — so these have to match, or
  * every one of them lands at the top of the page instead.
  */
-function slugify(headingHtml: string): string {
+export function slugify(headingHtml: string): string {
   return headingHtml
     .replace(/<[^>]+>/g, '') // inline code and emphasis inside the heading
-    .replace(/&[a-z]+;/gi, '')
+    // Numeric forms as well as named ones. `marked` escapes an apostrophe to
+    // `&#39;`, and stripping only `&`, `#` and `;` further down left the 39
+    // behind in the slug — *Songs that aren't there* became
+    // `songs-that-aren39t-there`, and every link to it died.
+    .replace(/&(?:[a-z]+|#\d+|#x[0-9a-f]+);/gi, '')
     .trim()
     .toLowerCase()
     .replace(/[^\w\- ]+/g, '')

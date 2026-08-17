@@ -1,17 +1,19 @@
-import type { StoredSong } from './types';
+import type { Setlist, StoredSong } from './types';
 
 const DB_NAME = 'livechart';
-const DB_VERSION = 1;
+/** 2 added the setlists store. Existing songs are untouched by the upgrade. */
+const DB_VERSION = 2;
 const STORE = 'songs';
+const SETS = 'setlists';
 
 /**
- * The song store.
+ * The song and setlist stores.
  *
  * Hand-written rather than wrapped in a library, for the same reason the
- * service worker is: one object store, three operations, and no appetite for
- * the dependency surface. Every call rejects rather than throwing synchronously,
- * so a browser with IndexedDB switched off degrades to a warning in the library
- * screen instead of a blank app.
+ * service worker is: two object stores, a handful of operations, and no
+ * appetite for the dependency surface. Every call rejects rather than throwing
+ * synchronously, so a browser with IndexedDB switched off degrades to a warning
+ * in the library screen instead of a blank app.
  */
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -27,6 +29,7 @@ function open(): Promise<IDBDatabase> {
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(SETS)) db.createObjectStore(SETS, { keyPath: 'id' });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('Could not open the song library.'));
@@ -52,33 +55,41 @@ function committed(tx: IDBTransaction): Promise<void> {
   });
 }
 
-export async function loadSongs(): Promise<StoredSong[]> {
+async function readAll<T>(store: string, what: string): Promise<T[]> {
   const db = await open();
-  const tx = db.transaction(STORE, 'readonly');
-  const request = tx.objectStore(STORE).getAll() as IDBRequest<StoredSong[]>;
-  const [songs] = await Promise.all([
-    new Promise<StoredSong[]>((resolve, reject) => {
+  const tx = db.transaction(store, 'readonly');
+  const request = tx.objectStore(store).getAll() as IDBRequest<T[]>;
+  const [rows] = await Promise.all([
+    new Promise<T[]>((resolve, reject) => {
       request.onsuccess = () => resolve(request.result ?? []);
-      request.onerror = () => reject(request.error ?? new Error('Could not read the songs.'));
+      request.onerror = () => reject(request.error ?? new Error(`Could not read the ${what}.`));
     }),
     committed(tx),
   ]);
-  return songs;
+  return rows;
 }
 
-/** Writes every song given, in one transaction: a restore is all or nothing. */
-export async function saveSongs(songs: StoredSong[]): Promise<void> {
-  if (songs.length === 0) return;
+/** Writes every row given, in one transaction: a restore is all or nothing. */
+async function writeAll<T>(store: string, rows: T[]): Promise<void> {
+  if (rows.length === 0) return;
   const db = await open();
-  const tx = db.transaction(STORE, 'readwrite');
-  const store = tx.objectStore(STORE);
-  for (const song of songs) store.put(song);
+  const tx = db.transaction(store, 'readwrite');
+  const objectStore = tx.objectStore(store);
+  for (const row of rows) objectStore.put(row);
   await committed(tx);
 }
 
-export async function deleteSong(id: string): Promise<void> {
+async function deleteRow(store: string, id: string): Promise<void> {
   const db = await open();
-  const tx = db.transaction(STORE, 'readwrite');
-  tx.objectStore(STORE).delete(id);
+  const tx = db.transaction(store, 'readwrite');
+  tx.objectStore(store).delete(id);
   await committed(tx);
 }
+
+export const loadSongs = (): Promise<StoredSong[]> => readAll<StoredSong>(STORE, 'songs');
+export const saveSongs = (songs: StoredSong[]): Promise<void> => writeAll(STORE, songs);
+export const deleteSong = (id: string): Promise<void> => deleteRow(STORE, id);
+
+export const loadSetlists = (): Promise<Setlist[]> => readAll<Setlist>(SETS, 'setlists');
+export const saveSetlists = (setlists: Setlist[]): Promise<void> => writeAll(SETS, setlists);
+export const deleteSetlist = (id: string): Promise<void> => deleteRow(SETS, id);

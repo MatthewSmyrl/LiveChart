@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { readImport, type BackupSong } from './backup';
-import { deleteSong, loadSongs, saveSongs } from './db';
+import { deleteSetlist, deleteSong, loadSetlists, loadSongs, saveSetlists, saveSongs } from './db';
 import { mergeSongs } from './merge';
 import { bundledSongs } from './seed';
-import type { StoredSong } from './types';
+import { mergeSetlists } from './setlists';
+import type { Setlist, StoredSong } from './types';
 
 /** Set once the bundled songs have been offered, so a deletion stays deleted. */
 const SEEDED_KEY = 'lc.seeded';
@@ -11,6 +12,9 @@ const SEEDED_KEY = 'lc.seeded';
 export interface ImportOutcome {
   added: number;
   replaced: number;
+  /** Setlists a backup bundle brought with it. */
+  setsAdded: number;
+  setsReplaced: number;
   /** Files that were not charts, with the reason, for an honest message. */
   rejected: { name: string; reason: string }[];
   /** True when a backup bundle carried preferences. */
@@ -20,10 +24,15 @@ export interface ImportOutcome {
 export interface LibraryApi {
   /** Null while loading — distinct from an empty library. */
   songs: StoredSong[] | null;
+  /** Null while loading, as with songs. */
+  setlists: Setlist[] | null;
   /** Storage is unavailable. The app still runs on what is in memory. */
   error: string | null;
   importFiles: (files: File[]) => Promise<ImportOutcome>;
   remove: (id: string) => Promise<void>;
+  /** Creates or replaces one setlist, by id. */
+  saveSet: (setlist: Setlist) => Promise<void>;
+  removeSet: (id: string) => Promise<void>;
 }
 
 function seeded(): boolean {
@@ -51,14 +60,21 @@ function markSeeded(): void {
  */
 export function useLibrary(): LibraryApi {
   const [songs, setSongs] = useState<StoredSong[] | null>(null);
+  const [setlists, setSetlists] = useState<Setlist[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // The state updater runs on the next render, which is too late for an import
-  // that has to report what it did. This mirror is what the writes work from.
+  // that has to report what it did. These mirrors are what the writes work from.
   const current = useRef<StoredSong[]>([]);
   const apply = useCallback((next: StoredSong[]) => {
     current.current = next;
     setSongs(next);
+  }, []);
+
+  const currentSets = useRef<Setlist[]>([]);
+  const applySets = useCallback((next: Setlist[]) => {
+    currentSets.current = next;
+    setSetlists(next);
   }, []);
 
   useEffect(() => {
@@ -72,6 +88,17 @@ export function useLibrary(): LibraryApi {
       } catch (e) {
         storageWorks = false;
         setError(e instanceof Error ? e.message : 'The song library could not be opened.');
+      }
+
+      // Separately, because a setlist store that won't read is no reason to
+      // lose the songs — you can still play, just not to a running order.
+      let sets: Setlist[] = [];
+      if (storageWorks) {
+        try {
+          sets = await loadSetlists();
+        } catch {
+          setError('The setlists could not be read. The songs are all here.');
+        }
       }
 
       // Seed once and only once. Deleting the fixture must not resurrect it at
@@ -88,17 +115,21 @@ export function useLibrary(): LibraryApi {
         }
       }
 
-      if (!cancelled) apply(existing);
+      if (!cancelled) {
+        apply(existing);
+        applySets(sets);
+      }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [apply]);
+  }, [apply, applySets]);
 
   const importFiles = useCallback(
     async (files: File[]): Promise<ImportOutcome> => {
       const incoming: BackupSong[] = [];
+      const incomingSets: Setlist[] = [];
       const rejected: ImportOutcome['rejected'] = [];
       let prefs: Record<string, string> = {};
 
@@ -117,6 +148,7 @@ export function useLibrary(): LibraryApi {
           incoming.push({ title: parsed.title, text: parsed.text });
         } else {
           incoming.push(...parsed.songs);
+          incomingSets.push(...parsed.setlists);
           prefs = { ...prefs, ...parsed.prefs };
         }
       }
@@ -129,6 +161,19 @@ export function useLibrary(): LibraryApi {
           await saveSongs(merged.songs);
         } catch {
           setError('The songs are loaded but could not be saved to this device.');
+        }
+      }
+
+      // Restored ahead of the songs they name, which is fine: a setlist entry
+      // pointing at a chart that isn't here yet is stepped over rather than
+      // being an error, and importing that chart later fills the gap in.
+      const mergedSets = mergeSetlists(currentSets.current, incomingSets);
+      if (incomingSets.length > 0) {
+        applySets(mergedSets.setlists);
+        try {
+          await saveSetlists(mergedSets.setlists);
+        } catch {
+          setError('The setlists are loaded but could not be saved to this device.');
         }
       }
 
@@ -146,13 +191,18 @@ export function useLibrary(): LibraryApi {
       return {
         added: merged.added,
         replaced: merged.replaced,
+        setsAdded: mergedSets.added,
+        setsReplaced: mergedSets.replaced,
         rejected,
         prefsRestored: Object.keys(prefs).length > 0,
       };
     },
-    [apply],
+    [apply, applySets],
   );
 
+  // Setlists mentioning this song are deliberately left alone. The entry
+  // becomes a gap the pedal steps over, and re-importing the chart fills it
+  // back in — which beats quietly editing running orders behind your back.
   const remove = useCallback(
     async (id: string) => {
       apply(current.current.filter((song) => song.id !== id));
@@ -165,5 +215,34 @@ export function useLibrary(): LibraryApi {
     [apply],
   );
 
-  return { songs, error, importFiles, remove };
+  // One set at a time rather than the whole shelf: editing a running order is a
+  // stream of small changes — a move, a removal, another move — and rewriting
+  // every set on each of them would be pointless work between songs.
+  const saveSet = useCallback(
+    async (setlist: Setlist) => {
+      const existing = currentSets.current;
+      const has = existing.some((s) => s.id === setlist.id);
+      applySets(has ? existing.map((s) => (s.id === setlist.id ? setlist : s)) : [...existing, setlist]);
+      try {
+        await saveSetlists([setlist]);
+      } catch {
+        setError('That setlist is here but could not be saved to this device.');
+      }
+    },
+    [applySets],
+  );
+
+  const removeSet = useCallback(
+    async (id: string) => {
+      applySets(currentSets.current.filter((s) => s.id !== id));
+      try {
+        await deleteSetlist(id);
+      } catch {
+        setError('That setlist left the list but could not be deleted from storage.');
+      }
+    },
+    [applySets],
+  );
+
+  return { songs, setlists, error, importFiles, remove, saveSet, removeSet };
 }

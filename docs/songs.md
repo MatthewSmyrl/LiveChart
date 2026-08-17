@@ -13,13 +13,15 @@ button matters more here than it would in a normal app.
 
 ## The library screen
 
-A list of every song you have, alphabetically, with the one currently open
-marked. Along the top:
+Two tabs — **Songs** and **[Setlists](setlists.md)** — over one row of buttons.
+This chapter is the Songs tab: a list of every song you have, alphabetically,
+with the one currently open marked. Along the top:
 
 | Button | What it does |
 |---|---|
 | **Import** | Opens the file picker. Takes `.lcf` charts, and backup bundles. |
-| **Back up** | Writes every song plus your settings into one file. |
+| **Back up** | Writes every song, setlist and setting into one file. |
+| **Guide** | This guide, which is inside the app and works offline. |
 | **Done** | Back to the chart. |
 
 And on each row:
@@ -71,9 +73,10 @@ perfectly good workflow. So is AirDrop.
 `LiveChart backup 2026-08-12.json`. On an iPad it goes through the share sheet,
 so you can drop it into Files, iCloud, or AirDrop it straight to a laptop.
 
-That file holds every song's original `.lcf` text plus your settings — display
-size, step, theme, pedal bindings. To restore it, **Import** it like any other
-file. One step, everything back.
+That file holds every song's original `.lcf` text, your
+[setlists](setlists.md), and your settings — display size, step, theme, pedal
+bindings. To restore it, **Import** it like any other file. One step, everything
+back.
 
 Do this because:
 
@@ -110,9 +113,13 @@ editor.
 **✕** on a row, then confirm. Deletions stick — including the sample *Format
 Test* chart, which won't come back at the next launch.
 
+Setlists naming a deleted song are left alone: the entry becomes a gap the pedal
+steps over, and importing that chart again fills it back in. See
+[Songs that aren't there](setlists.md#songs-that-arent-there).
+
 If you delete everything, the library screen is where the app opens, since
 there's nothing to show.
 
 ---
 
-[← Using LiveChart](using.md) · [Guide contents](README.md) · [Writing charts →](lcf-format.md)
+[← Using LiveChart](using.md) · [Guide contents](README.md) · [Setlists →](setlists.md)

@@ -1,39 +1,43 @@
 # LiveChart — project status
 
-**Last updated:** 2026-08-13 · **Phases 0–4b complete** · 102 tests locally,
-94 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
+**Last updated:** 2026-08-17 · **Phases 0–5 complete** · 122 tests locally,
+114 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
 
 ---
 
-## ⏳ Start here — Matt is using it against real charts
+## ⏳ Start here — Phase 5 is built but has never met the iPad
 
-**The in-app guide is done and confirmed on the device.** Matt retested
-2026-08-15 after the service-worker fix — Chrome, the iPad home-screen app, and
-Airplane Mode — and all of it works: the Guide button opens, the chapter links
-navigate, and ← Back to LiveChart returns to the app. **The standalone-PWA
-question is answered**: the guide stays inside the installed app. Nothing is
-outstanding on it.
+**Setlists are done and verified in the browser, and not deployed.** Everything
+in *Phase 5* below was exercised against the built site with the service worker
+live: building a set, reordering it, the two-press advance and retreat, the
+backup round trip, and the version 1 → 2 database upgrade. **None of it has been
+near the pedal.** That is the next thing.
 
-**What is still open is the older thread, from 2026-08-11:** real-world use of
-import and backup — writing more `.lcf` files and exercising import, backup and
-updating songs against real material. The point is to surface what needs
-changing, so **ask what came out of it before planning anything**, and fixes
-from it come before new work.
+**The real-world import and backup thread is closed** — Matt confirmed
+2026-08-17 that writing `.lcf` files, importing, backing up and updating songs
+all held up against real material, with nothing to fix. It no longer needs
+asking about.
+
+**What to ask about after an iPad run:** whether the two-press retreat at the
+top of a song is right in practice. It was a deliberate call for symmetry, and
+it is the one setlist behaviour that could plausibly annoy — the confirm exists
+so a count-in can't move you, but only a gig proves that.
 
 **Whenever a deploy is being tested, force-quit and relaunch first.** There is
 deliberately no `skipWaiting`, so a resumed app is still the old build — which
 is precisely what made the fixed guide keep showing a white screen.
 
-**Then Phase 5 — setlists.** Do not start it without checking in; the testing
-may well reorder the list. When it lands it also moves the Guide button, since
-Phase 5 rebuilds that screen, and the guide gains a setlists chapter.
+**Two standing rules:**
 
-**One standing rule now:** `docs/lcf-format.md` is the format definition —
-`LCF-SPEC.md` no longer exists — so a code change touching the format updates the
-guide in the same pass. The guide is written for players, so keep unbuilt
-features out of it.
+- `docs/lcf-format.md` is the format definition — `LCF-SPEC.md` no longer
+  exists — so a code change touching the format updates the guide in the same
+  pass. The guide is written for players, so keep unbuilt features out of it.
+- **A service worker or guide change is only tested against the built site with
+  the worker live.** `.claude/launch.json` has `livechart-built` for this;
+  stopping that server is a real offline test. See the guide bug below for what
+  slipping this costs.
 
-Nothing is blocked. Everything below is done and deployed.
+Nothing is blocked.
 
 ### iPad, as confirmed on the device
 
@@ -243,6 +247,16 @@ All of these are settled and reflected in the code and in `docs/lcf-format.md`.
 | Per-song lyrics | **`Lyrics: on\|off` in the file header, and it wins every time the song opens.** Whether you need the words is a property of the song, not something to remember at the top of it. The toolbar button still overrides for as long as that song is up; reopening restores the tag. Untagged songs fall back to `lc.showLyrics` |
 | Wake lock on iOS | **Keep asking through the standard API; no video hack.** iPadOS 16.4–16.7 grants the lock and drops it unprompted, so what matters is re-acquiring — on any gesture, on `visibilitychange`, and on a 30s timer. A pedal-driven song never sleeps. The hidden-video trick would cost battery at every gig to cover a gap the pedal already covers, and a fixed iPadOS would make it dead weight |
 | Wake-lock status | **On the Pedal screen, not over the chart.** The lock is dropped and re-taken constantly on iOS, so a live badge flickers through every song saying nothing actionable. The pedal screen is opened deliberately — the right place to check whether an iPadOS update has fixed this |
+| Setlists | **Several, named, one playing at a time.** A working set of gigs is the actual use case, and the extra cost over a single "tonight's set" is one screen. Sorted alphabetically, like songs — a stable list is what you can find something in |
+| Setlist entries | **Song ids, repeats allowed, dangling tolerated.** Ids come from titles, so a set survives re-importing an edited chart. A repeat is a reprise, not a duplicate to clean up — which is why *position*, never song id, is what identifies where you are in the night |
+| A missing song | **Stepped over, never an error.** Deleting a chart, or restoring a set before its songs arrive, leaves an entry pointing at nothing. The set still plays; importing the chart fills the gap back in with no re-linking. Deleting a song deliberately does **not** edit setlists behind your back |
+| Setlist ids | **Random, not derived from the name.** Renaming is then free, and two devices' "Saturday" sets don't collide when a backup is restored |
+| Start and Delete | **Start is the only button on a setlist's row; deleting a set lives inside the set, behind a confirmation.** They were side by side at first and Matt caught it on sight: on a touchscreen, the control you press in a hurry must not sit next to the one that loses a running order. Start stays one tap because it happens at the top of a gig; delete costs opening the set first, which is the deliberateness it deserves |
+| Reordering | **↑ / ↓ buttons, not drag.** Touch drag inside a scrolling list is the fiddliest interaction on iOS, and this is a screen used standing up before a gig. No wrap at the ends: sending the opener to the end of the night on a mis-tap is a nasty surprise |
+| Moving between songs | **Two presses at both edges, and no wrap.** Forward already needed a confirm so a pedal bounce under a held last chord couldn't skip; back needs the same so a count-in can't retreat. The arms are independent, so arming one edge and pressing the other does nothing. The last song of the set parks rather than looping to the opener |
+| Off the set | **Opening a song by hand doesn't cancel the set, it just means position −1.** The readout disappears and the end-of-song press parks. There is deliberately no "next" from off-set: jumping into a running order you had stepped out of is exactly what the confirm exists to prevent |
+| Restoring setlists | **Merged by id, newer `updatedAt` wins.** Restoring last month's backup must not undo a running order fixed this afternoon |
+| Guide button | **Settled in the library header, shared by both tabs.** It is a reference for the whole app, not for either view. This was the provisional placement Phase 5 was meant to resolve |
 
 ---
 
@@ -497,6 +511,15 @@ at the built output rather than trusting it:
   applies GitHub's slug rule, because that is the shape the links were written
   in and GitHub is where the guide is also read. **If a heading link ever
   breaks, look there first.**
+
+  **It broke a second time in Phase 5**, and `slugify` is now unit-tested
+  (`build/guide.test.ts`, and `vite.config.ts` picks up `build/**` as well as
+  `src/**`). `marked` escapes an apostrophe to `&#39;`, and the entity strip
+  only handled *named* entities — so *Songs that aren't there* slugged as
+  `songs-that-aren39t-there` and every link to it died. Numeric and hex entities
+  are handled now. The regression guard that actually catches this class of bug
+  is walking the built pages and resolving every `href`: 84 internal links
+  across 7 pages, anchors included.
 - Tab titles carried raw markdown — *The \`.lcf\` format*.
 
 **Verified in the preview pane:** all 54 internal links across the six pages
@@ -543,22 +566,66 @@ navigate, and the back link returns to the app. **Tapping *Guide* keeps you
 inside the installed app** — it does not bounce out to Safari, which was the one
 thing that could not be tested anywhere but the device.
 
+### Phase 5 — Setlists (20 more tests) · built 2026-08-17, not yet deployed
+
+What it closes: between songs you were back in the library hunting for the next
+chart. Now the pedal carries the whole night.
+
+- `src/library/setlists.ts` — the type plus the pure rules: add, remove, move,
+  `stepPosition`, `firstPlayable`, `mergeSetlists`. Pure and DOM-free, like
+  `scrollPlan` and `keymap`, so the rules that matter on stage are unit-tested
+  rather than hoped at.
+- `src/library/SetlistsView.tsx` — the list, and the editor. The list row
+  carries **Start and nothing else**; **Delete set** is inside the editor with a
+  confirmation. See the decision table — this arrangement was corrected once
+  already and is not an accident.
+- `db.ts` goes to **DB_VERSION 2** with a second `setlists` store. The songs
+  store is untouched by the upgrade.
+- The backup goes to **BACKUP_VERSION 2** with a `setlists` array. A version 1
+  bundle restores exactly as it always did.
+- `usePerformance` gains `onStart` beside `onEnd`, each with its own arm.
+- The Songs screen is now **two tabs over one header** — which settles the Guide
+  button's placement, see the decision table.
+- `docs/setlists.md`, and the cross-references in the other four chapters.
+
+**A setlist holds song ids, and song ids come from titles.** That is what makes
+a restored set find the right charts on a different device, and what makes
+re-importing an edited chart keep its place in the running order. It is the
+payoff for the Phase 4b identity decision.
+
+**Verified against the built site with the service worker live**, from a cleared
+database: building a set and reordering it; the ↑ on row 1 and ↓ on the last row
+disabled; a song added twice showing as two positions and counted as *in the set
+2 times*; **Start** opening position 1; **Delete set** arming, backing out on
+*Keep*, and on *Delete* removing the set from the screen and from storage; press-press advancing through the whole
+set with each landing announced as *"2. Charlie"*; press-press retreating
+symmetrically; both ends parking rather than wrapping; arming one edge and
+pressing the other doing nothing; deleting a song leaving *not on this device*
+and the pedal stepping over it in **both** directions; re-importing that chart
+filling the gap with no re-linking; opening an off-set song dropping the readout
+and parking the end press, and opening an on-set song rejoining at that
+position; a backup carrying the set and restoring it after a full wipe; and a
+**version 1 database upgrading to 2 with its songs intact and no warning**.
+
+Then, with the server stopped: the app boots offline and the new guide chapter
+renders offline. The precache went 15 files to 16.
+
+**Not yet proven:** any of it on the iPad, with a pedal. See *Start here*.
+
+**One trap worth knowing if you verify this way again.** The preview pane only
+composites while it is displayed, and **smooth scrolling does not advance in a
+pane that isn't** — so `window.scrollY` never moves, every press re-plans the
+same first step, and the song looks frozen with no notice. It reads exactly like
+a broken page turn and isn't one. Either display the pane, or
+`window.scrollTo(0, max)` first and test the edge behaviour directly.
+
 ---
 
-## Next: real-world testing, then Phase 5 — Setlists
+## Next
 
-**First**: whatever comes back from the iPad — the in-app guide, and the older
-run at import, backup and updating songs against real charts. Fixes land before
-new work. See *Start here* for what to ask about each.
+**First: the iPad, with the pedal.** Setlists have never been near either. See
+*Start here* for the one question worth forming an opinion on.
 
-**Then Phase 5:**
-
-- The hook is already in place: `usePerformance` takes an `onEnd` callback fired
-  by the confirming press at the end of a song, currently passed as `undefined`.
-  The library gives it something to advance *to*.
-- It rebuilds the Songs screen, so it inherits two loose ends: the **Guide
-  button's placement**, which was always provisional, and a **setlists chapter**
-  for the guide — written in the same pass as the code, per the standing rule.
 - **Deferred past v1** — in-app editor, PDF/OCR import (the source PDF is
   image-only, no text layer), transpose, sharing.
 

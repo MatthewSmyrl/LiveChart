@@ -4,6 +4,7 @@ import { ChartView } from './render/ChartView';
 import { LibraryView } from './library/LibraryView';
 import { idFor } from './library/identity';
 import { preferredSeedTitle } from './library/seed';
+import { firstPlayable, stepPosition } from './library/setlists';
 import { useLibrary } from './library/useLibrary';
 import { PedalLearn } from './perform/PedalLearn';
 import { TapZones } from './perform/TapZones';
@@ -59,6 +60,10 @@ export function App() {
   const [step, setStep] = usePref<number>('lc.step', 0.75);
   const [bindings, setBindings] = usePref<Bindings>('lc.bindings', DEFAULT_BINDINGS);
   const [rememberedId, setRememberedId] = usePref<string | null>('lc.currentSong', null);
+  // The set survives a relaunch along with the song, so an app restarted
+  // between numbers comes back knowing where in the night it is.
+  const [activeSetId, setActiveSetId] = usePref<string | null>('lc.setlist', null);
+  const [setPos, setSetPos] = usePref<number>('lc.setlistPos', -1);
 
   const [perform, setPerform] = useState(false);
   const [learning, setLearning] = useState(false);
@@ -67,7 +72,12 @@ export function App() {
   const [hintVisible, setHintVisible] = useState(true);
 
   const library = useLibrary();
-  const { songs } = library;
+  const { songs, setlists } = library;
+
+  // A deleted setlist leaves `lc.setlist` pointing at nothing, which simply
+  // means no set is playing.
+  const activeSet = setlists?.find((s) => s.id === activeSetId) ?? null;
+  const hasSong = useCallback((id: string) => !!songs?.some((s) => s.id === id), [songs]);
 
   // Land on the song you were last looking at, so launching mid-set costs no
   // taps. A first run has nothing remembered, and falls back to whatever seeded
@@ -156,15 +166,48 @@ export function App() {
   // to capture, so it holds the chrome open while it is up.
   const chromeUp = !perform || chromeVisible || learning;
 
-  const { turn, notice } = usePerformance({
+  // Assigned from the hook below and read only from callbacks it is given, so
+  // the announcement can name the song without the two definitions circling.
+  const sayRef = useRef<(message: string | null) => void>(() => {});
+
+  /**
+   * Moves to a position in the running order.
+   *
+   * The set holds song ids, so a chart that has been re-imported since the set
+   * was written is still found: ids come from titles. A position pointing at a
+   * song this device hasn't got is stepped over before we get here.
+   */
+  const goTo = useCallback(
+    (pos: number) => {
+      const id = activeSet?.songs[pos];
+      if (!id) return;
+      setSetPos(pos);
+      setRememberedId(id);
+      const title = songs?.find((s) => s.id === id)?.title;
+      // Named rather than left to be recognised: the chart appears instantly,
+      // and knowing what you are looking at before you read it is worth a
+      // couple of seconds on stage.
+      if (title) sayRef.current(`${pos + 1}. ${title}`);
+    },
+    [activeSet, songs, setSetPos, setRememberedId],
+  );
+
+  // A position of -1 means the open song is not in the set — opened from the
+  // library while a set happened to be active. There is deliberately no next
+  // from there: jumping into the top of a running order you had stepped out of
+  // is exactly the surprise the two-press confirm exists to prevent.
+  const nextPos = activeSet && setPos >= 0 ? stepPosition(activeSet.songs, setPos, 1, hasSong) : null;
+  const prevPos = activeSet && setPos >= 0 ? stepPosition(activeSet.songs, setPos, -1, hasSong) : null;
+
+  const { turn, notice, say } = usePerformance({
     fraction: step,
     bindings,
     // A pedal press must not page the song list while you are choosing one.
     suspended: learning || inLibrary,
-    // Phase 5 advances the setlist here. For now the confirming press parks the
-    // song at its end rather than doing something surprising.
-    onEnd: undefined,
+    onEnd: nextPos === null ? undefined : () => goTo(nextPos),
+    onStart: prevPos === null ? undefined : () => goTo(prevPos),
   });
+  sayRef.current = say;
 
   // Reported on the pedal screen rather than over the chart: on iPadOS the lock
   // is dropped and re-taken constantly, so a live badge would flicker through
@@ -183,8 +226,21 @@ export function App() {
       <LibraryView
         library={library}
         currentId={currentId}
+        activeSetId={activeSetId}
         onOpen={(id) => {
           setRememberedId(id);
+          // Opening a song by hand doesn't cancel the set — it just tells us
+          // where in it you now are, which is nowhere if the song isn't in it.
+          setSetPos(activeSet?.songs.indexOf(id) ?? -1);
+          setBrowsing(false);
+        }}
+        onStartSet={(id) => {
+          const set = setlists?.find((s) => s.id === id);
+          const pos = set ? firstPlayable(set.songs, hasSong) : null;
+          if (!set || pos === null) return;
+          setActiveSetId(id);
+          setSetPos(pos);
+          setRememberedId(set.songs[pos]!);
           setBrowsing(false);
         }}
         onClose={() => setBrowsing(false)}
@@ -207,6 +263,13 @@ export function App() {
           </button>
         </div>
         <div className="toolbar__group">
+          {/* Where you are in the night, when there is a night to be in the
+              middle of. Only shown while a set is actually playing. */}
+          {activeSet && setPos >= 0 && (
+            <span className="toolbar__readout" title={activeSet.name}>
+              {setPos + 1}/{activeSet.songs.length}
+            </span>
+          )}
           <button className="btn" onClick={() => setBrowsing(true)}>
             Songs
           </button>
