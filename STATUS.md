@@ -1,22 +1,32 @@
 # LiveChart — project status
 
-**Last updated:** 2026-08-17 · **Phases 0–5 complete and deployed** · 122 tests
-locally, 114 in CI · **live at https://matthewsmyrl.github.io/LiveChart/**
+**Last updated:** 2026-09-05 · **Phases 0–5 complete, deployed and in use** ·
+122 tests locally, 114 in CI ·
+**live at https://matthewsmyrl.github.io/LiveChart/**
 
 ---
 
-## ⏳ Start here — Phase 5 is deployed and waiting on the iPad
+## ⏳ Start here — v1 is in use; transposition is in planning
 
-**Setlists shipped 2026-08-17** (`c1a2f1e`) and are verified live: the Phase 5
-strings are in the deployed bundle, the guide's setlists chapter answers 200, 16
-files precache, and the no-copyright check still passes — *That Funny Feeling*
-absent, *Format Test* present.
+**Phase 5 is settled.** Setlists shipped 2026-08-17 (`c1a2f1e`), were verified
+live, and Matt reported on 2026-09-05 that **the app is working well so far** in
+actual use. That closes the pedal-and-setlist question this section carried for
+three weeks. Nothing from that run needs fixing.
 
-**Matt is testing on the iPad with the pedal. Ask how that went before starting
-anything.** Everything in *Phase 5* below was proven in the browser against the
-built site with the worker live, but **none of it has been near a real pedal**,
-which is the only thing that settles whether a running order feels right at a
-gig. Fixes from that run come before new work.
+**The next work is transposition, and it is being planned before any code is
+written.** See **`TRANSPOSITION-PLAN.md`** — requirements, the arithmetic, the
+architecture, a build order and a test plan. Read it before touching this
+feature; the model is not what you would guess.
+
+**It is not ready to build.** Seven questions are open in §9 of that document,
+and **question 2 sets the token model**, so starting before it is answered means
+rewriting. Matt is consulting a professional who reads Nashville number charts
+for a living, and will come back with answers. **Ask whether those came back
+before starting any of this.**
+
+Three things are already confirmed and are not to be reopened: the `Key − Capo`
+model, slash-bass numbering (`1/3`, `1/b3`), and that numbers not moving when
+the key changes is the point of the system rather than a defect.
 
 **The real-world import and backup thread is closed** — Matt confirmed
 2026-08-17 that writing `.lcf` files, importing, backing up and updating songs
@@ -633,11 +643,19 @@ a broken page turn and isn't one. Either display the pane, or
 
 ## Next
 
-**First: the iPad, with the pedal.** Setlists have never been near either. See
-*Start here* for the one question worth forming an opinion on.
+**Transposition — planned, not started.** `TRANSPOSITION-PLAN.md` is the
+requirements and planning document, written 2026-09-05. In short: the chart
+draws `Key − Capo`, both values are adjustable in the app and pinnable on a
+setlist entry, generated accidentals are sharps, and Nashville numbers become a
+thirteenth option in the key picker. Build order is 6a–6e in §10 of that
+document, starting with a pure `src/music/` module that needs no UI to prove.
 
-- **Deferred past v1** — in-app editor, PDF/OCR import (the source PDF is
-  image-only, no text layer), transpose, sharing.
+**Blocked on §9, question 2** — whether a bare Nashville number implies its
+diatonic quality. It decides the token model, so nothing should be built until
+Matt comes back with an answer. See *Start here*.
+
+- **Still deferred** — in-app editor, PDF/OCR import (the source PDF is
+  image-only, no text layer), sharing.
 
 ### Smaller ideas, not yet scheduled
 - **Toggling lyrics mid-song.** The per-song `Lyrics:` default landed on
