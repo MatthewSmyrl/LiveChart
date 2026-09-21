@@ -228,22 +228,37 @@ wrapping a phrase costs you on stage.
 
 | Token | Meaning |
 |---|---|
-| `D`, `Am7`, `Bbmaj9#11` | A chord — root, optional accidental, whatever quality you like after it |
+| `D`, `Am7`, `Bbmaj9#11` | A chord — root, optional accidental, and a quality written in chord vocabulary (below) |
 | `D/A` | Slash chord. The `/` means a bass note, and only that |
 | `%` | Repeat the previous bar. Renders as the repeat glyph, never as a literal `%`. Only valid alone in a bar |
 | `R` | **Rest** — see below |
 | `N.C.` | No chord. The harmony drops out but the song carries on. Rendered distinctly from a rest |
 | anything else | Kept as literal text and shown dimmed — `stop`, `tacet`, `let ring` |
 
-Formally, a token is recognised as a chord when it matches:
+A chord is a root note `A`–`G`, an optional `#` or `b`, a quality, and
+optionally a slash and a bass note that is itself a note name. The quality is
+built from these pieces, in any order:
 
-```
-^[A-G](#|b)?([^/\s]*)(/[A-G](#|b)?)?$
-```
+| Kind | Pieces |
+|---|---|
+| Minor | `m` `min` `-` |
+| Major | `maj` `Maj` `M` `Δ` |
+| Diminished, half-diminished, augmented | `dim` `°` `o` `ø` `aug` `+` |
+| Suspended, added, altered | `sus` `sus2` `sus4` `add` `alt` |
+| Numbers | `2` `4` `5` `6` `7` `9` `11` `13`, each optionally preceded by `b` `#` `+` or `-` |
+| Grouping | Parentheses around any of the above, with commas inside |
 
-Which is to say: a root note, an optional sharp or flat, anything you like for
-the quality, and optionally a slash bass note that is itself a note name. If it
-doesn't match, it's kept and dimmed.
+So `Dm7b5`, `C7sus4`, `Cadd9`, `C5`, `CmMaj7`, `Cm(maj7)`, `C7(b9,#11)`, `C°7`,
+`Cø7`, `C+`, `C7alt` and `C69` are all chords. Case matters: `M` is major and
+`m` is minor.
+
+**A capitalised word is not a chord.** `Drums` starts with a D, but "rums" isn't
+chord vocabulary, so it's kept as text rather than read as a D chord. The same
+goes for `Fill`, `Break`, `Bass`, `Fade` and `Ending`. If you want a word in a
+bar, write it in lower case — `stop`, `fill`, `tacet` — or put it in a comment.
+
+`C6/9` is also kept as text, because the `/` always means a bass note. Write
+`C69` or `C6add9` instead.
 
 **An unrecognised token never breaks the chart.** That's the important rule: a
 chart that half-renders beats a blank screen at a gig, so nothing you can type

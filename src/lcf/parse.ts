@@ -24,6 +24,28 @@ const DEFAULT_TIME: TimeSignature = { beats: 4, unit: 4, grouping: [4], raw: '4/
 
 /** Root, optional accidental, quality/extension, optional slash bass. */
 const CHORD_RE = /^([A-G])(#|b)?([^/\s]*)(?:\/([A-G])(#|b)?)?$/;
+
+/**
+ * One recognised piece of a chord quality. Longer spellings come first so that
+ * `maj` is never read as `m` followed by junk. A number may carry an alteration
+ * in front — `b5`, `#11`, `+5`, `-9`.
+ */
+const QUALITY_PIECE =
+  'maj|Maj|min|dim|aug|sus|add|alt|m|M|Δ|°|o|ø|\\+|-|[b#+-]?(?:13|11|2|4|5|6|7|9)';
+
+/**
+ * A quality made entirely of recognised pieces, in any order, optionally with
+ * parenthesised groups like `(b9,#11)`. Anything else — `Drums` is D with
+ * "rums" — makes the token a literal, so a word in a bar can never be
+ * transposed. See docs/lcf-format.md, "Chord tokens".
+ */
+const QUALITY_RE = new RegExp(
+  `^(?:${QUALITY_PIECE}|\\((?:${QUALITY_PIECE})(?:,?(?:${QUALITY_PIECE}))*\\))*$`,
+);
+
+export function isChordQuality(quality: string): boolean {
+  return QUALITY_RE.test(quality);
+}
 const SECTION_RE = /^\[([^\]]*)\]\s*(.*)$/;
 const REPEAT_RE = /^x\s*(\d+)$/i;
 
@@ -83,7 +105,7 @@ export function parseToken(text: string, beats: number): Token {
   }
 
   const m = CHORD_RE.exec(text);
-  if (m) {
+  if (m && isChordQuality(m[3] ?? '')) {
     const accidental = m[2] as '#' | 'b' | undefined;
     const bassAccidental = m[5] as '#' | 'b' | undefined;
     return {

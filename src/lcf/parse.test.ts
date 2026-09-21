@@ -102,6 +102,28 @@ describe('tokens', () => {
     expect(parseToken('NC', 4).kind).toBe('nc');
   });
 
+  // TRANSPOSITION-PLAN.md §6.2. A quality must be made entirely of real chord
+  // vocabulary, or a word like `Drums` would transpose to `Erums`.
+  it('accepts real chord vocabulary in the quality', () => {
+    for (const t of [
+      'Dm7b5', 'Bbmaj9#11', 'C7sus4', 'Cadd9', 'C5', 'CmMaj7', 'Cm(maj7)', 'C7(b9,#11)',
+      'C°7', 'Cø7', 'C+', 'C7alt', 'C69', 'F#m7b5/C#', 'Csus2', 'Cdim7', 'Caug', 'C13',
+      'CΔ7', 'C-7', 'Cmin', 'C7#5', 'C7+5', 'Co7', 'CMaj7', 'C6add9', 'Cm11', 'Ebm/Gb',
+    ]) {
+      expect(parseToken(t, 4).kind, t).toBe('chord');
+    }
+  });
+
+  it('reads capitalised words as literals, not chords', () => {
+    for (const t of ['Drums', 'Fill', 'Break', 'Bass', 'Fade', 'Ending', 'All', 'Cue', 'Gtr', 'Bridge']) {
+      expect(parseToken(t, 4).kind, t).toBe('literal');
+    }
+  });
+
+  it('keeps C6/9 a literal, since the slash means a bass note', () => {
+    expect(parseToken('C6/9', 4).kind).toBe('literal');
+  });
+
   it('keeps unrecognised tokens as literals rather than failing', () => {
     expect(parseToken('stop', 4)).toMatchObject({ kind: 'literal', text: 'stop' });
     const r = song('Title: X\n\n[A]\n|stop |\n');
