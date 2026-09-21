@@ -3,7 +3,7 @@
  * read as a chord, rest, N.C. or repeat — the tokens the tightened grammar of
  * TRANSPOSITION-PLAN.md §6.2 turns into dimmed literals that never transpose.
  *
- *   node --experimental-strip-types scripts/check-grammar.mjs <file|dir> ...
+ *   node scripts/check-grammar.mjs <file|dir> ...
  *
  * Takes `.lcf` files, directories of them, and backup bundles (`.json`), so a
  * backup exported from the iPad can be checked in one go. Reads only; writes
@@ -11,7 +11,11 @@
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { parseLcf } from '../src/lcf/parse.ts';
+import { runnerImport } from 'vite';
+
+// Through Vite, because the source uses extensionless imports Node won't resolve.
+const { module: parser } = await runnerImport('/src/lcf/parse.ts');
+const { parseLcf } = parser;
 
 /** The grammar before §6.2 — anything at all after the root. */
 const OLD_CHORD_RE = /^([A-G])(#|b)?([^/\s]*)(?:\/([A-G])(#|b)?)?$/;

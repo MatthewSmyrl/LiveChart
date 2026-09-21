@@ -19,6 +19,7 @@ import type {
   TimeSignature,
   Token,
 } from './types';
+import { parseKey } from '../music/notes';
 
 const DEFAULT_TIME: TimeSignature = { beats: 4, unit: 4, grouping: [4], raw: '4/4' };
 
@@ -46,6 +47,7 @@ const QUALITY_RE = new RegExp(
 export function isChordQuality(quality: string): boolean {
   return QUALITY_RE.test(quality);
 }
+
 const SECTION_RE = /^\[([^\]]*)\]\s*(.*)$/;
 const REPEAT_RE = /^x\s*(\d+)$/i;
 
@@ -361,6 +363,13 @@ export function parseLcf(source: string): Song {
     } else {
       lyricsDefault = flag;
     }
+  }
+
+  // Kept as written for display; an unreadable key is transposed as C, and
+  // never fails the chart over a header line.
+  const keyRaw = attributes.get('key');
+  if (keyRaw && !parseKey(keyRaw)) {
+    warnings.push({ line: 0, message: `Unrecognised key "${keyRaw}"; treating the chords as written in C.` });
   }
 
   const capoRaw = attributes.get('capo');
