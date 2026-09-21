@@ -119,6 +119,16 @@ export function keyLabel(k: Key): string {
   return noteName(k.tonic) + (k.minor ? 'm' : '');
 }
 
+/** For reading rather than typing: `B♭`, `F♯`. */
+export function prettyNote(n: Note): string {
+  return n.letter + (n.alter > 0 ? '♯'.repeat(n.alter) : '♭'.repeat(-n.alter));
+}
+
+/** `B♭`, `F♯m`. */
+export function prettyKey(k: Key): string {
+  return prettyNote(k.tonic) + (k.minor ? 'm' : '');
+}
+
 /** Sharps positive, flats negative. */
 export function keySignature(k: Key): number {
   return LETTER_FIFTHS[k.tonic.letter] + 7 * k.tonic.alter - (k.minor ? 3 : 0);

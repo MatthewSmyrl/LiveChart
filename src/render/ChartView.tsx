@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
 import type { Song } from '../lcf/types';
+import { prettyKey } from '../music/notes';
+import type { KeyState } from '../music/transpose';
+import { keyBadge } from './KeyPanel';
 import { SectionView } from './SectionView';
 import { useBarsPerRow } from './useBarsPerRow';
 
@@ -22,16 +25,28 @@ function longestChordLine(song: Song): number {
 
 export function ChartView({
   song,
+  keys,
   fontScale,
   showLyrics,
+  onKeys,
 }: {
+  /** Already transposed — this view does not know transposition exists. */
   song: Song;
+  /** The keys that produced `song`, for the header readout. */
+  keys: KeyState;
   fontScale: number;
   showLyrics: boolean;
+  /** Opens the key panel. The header readout is a second way in. */
+  onKeys: () => void;
 }) {
   const chordPx = BASE_CHORD_PX * fontScale;
   const longestLine = useMemo(() => longestChordLine(song), [song]);
   const { ref, barPx, capacity, max } = useBarsPerRow(chordPx, longestLine);
+
+  const { appKey, appCapo, fileKey, fileCapo, shapeKey, transposed } = keys;
+  // Rides in every sticky section header once the chart header has scrolled
+  // away. Only when transposed: a chart in its own key needs no label.
+  const marker = transposed ? keyBadge(keys) : undefined;
 
   return (
     <div
@@ -43,8 +58,17 @@ export function ChartView({
         <h1 className="chart__title">{song.meta.title}</h1>
         <p className="chart__byline">
           {song.meta.artist && <span>{song.meta.artist}</span>}
-          {song.meta.key && <span>Key {song.meta.key}</span>}
-          {song.meta.capo !== undefined && <span>Capo {song.meta.capo}</span>}
+          <button className={`chart__keys ${transposed ? 'chart__keys--moved' : ''}`} onClick={onKeys}>
+            Key {prettyKey(appKey)}
+            {(appCapo > 0 || song.meta.capo !== undefined) && <> · Capo {appCapo}</>}
+            {appCapo > 0 && <> · {prettyKey(shapeKey)} shapes</>}
+          </button>
+          {transposed && (
+            <span className="chart__moved">
+              Transposed from {prettyKey(fileKey)}
+              {fileCapo > 0 && `, capo ${fileCapo}`}
+            </span>
+          )}
           <span>{song.meta.time.raw}</span>
           {song.meta.tempo !== undefined && <span>{song.meta.tempo} bpm</span>}
         </p>
@@ -74,6 +98,7 @@ export function ChartView({
           time={song.meta.time}
           fit={{ capacity, max }}
           showLyrics={showLyrics}
+          {...(marker ? { marker } : {})}
         />
       ))}
     </div>

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseLcf } from './lcf/parse';
+import type { Song } from './lcf/types';
+import { type KeyChoice, viewSong } from './music/transpose';
 import { ChartView } from './render/ChartView';
+import { KeyPanel, keyBadge } from './render/KeyPanel';
 import { LibraryView } from './library/LibraryView';
 import { idFor } from './library/identity';
 import { preferredSeedTitle } from './library/seed';
@@ -52,6 +55,13 @@ const CHROME_IDLE_MS = 3500;
  * enough to take in — and every extra second is clutter over the chart.
  */
 const HINT_IDLE_MS = 2000;
+
+/** A toolbar key/capo choice, and the parsed song it was made for. */
+interface KeyOverride {
+  song: Song | null;
+  choice: KeyChoice;
+}
+const NO_OVERRIDE: KeyOverride = { song: null, choice: {} };
 
 export function App() {
   const [fontScale, setFontScale] = usePref('lc.fontScale', 1);
@@ -123,6 +133,17 @@ export function App() {
     setLyricsPref(!showLyrics);
   };
 
+  // Key and capo from the toolbar win over the file, for as long as this song
+  // is up — temporary, exactly like the lyrics override. Held against the song
+  // it was set for rather than cleared by an effect, so a new song can never
+  // draw a frame in the last song's key; and cleared outright whenever a song
+  // is opened, so reopening the same one returns to its file (R3.1).
+  const [keyOverride, setKeyOverride] = useState<KeyOverride>(NO_OVERRIDE);
+  const keyChoice = keyOverride.song === song ? keyOverride.choice : {};
+  const chooseKeys = (patch: KeyChoice) => setKeyOverride({ song, choice: { ...keyChoice, ...patch } });
+  const view = useMemo(() => (song ? viewSong(song, keyChoice) : null), [song, keyChoice.key, keyChoice.capo]);
+  const [keysOpen, setKeysOpen] = useState(false);
+
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
@@ -164,7 +185,7 @@ export function App() {
 
   // The learn screen must not be dismissable only by a pedal press it is trying
   // to capture, so it holds the chrome open while it is up.
-  const chromeUp = !perform || chromeVisible || learning;
+  const chromeUp = !perform || chromeVisible || learning || keysOpen;
 
   // Assigned from the hook below and read only from callbacks it is given, so
   // the announcement can name the song without the two definitions circling.
@@ -183,6 +204,7 @@ export function App() {
       if (!id) return;
       setSetPos(pos);
       setRememberedId(id);
+      setKeyOverride(NO_OVERRIDE);
       const title = songs?.find((s) => s.id === id)?.title;
       // Named rather than left to be recognised: the chart appears instantly,
       // and knowing what you are looking at before you read it is worth a
@@ -203,7 +225,7 @@ export function App() {
     fraction: step,
     bindings,
     // A pedal press must not page the song list while you are choosing one.
-    suspended: learning || inLibrary,
+    suspended: learning || keysOpen || inLibrary,
     onEnd: nextPos === null ? undefined : () => goTo(nextPos),
     onStart: prevPos === null ? undefined : () => goTo(prevPos),
   });
@@ -229,6 +251,7 @@ export function App() {
         activeSetId={activeSetId}
         onOpen={(id) => {
           setRememberedId(id);
+          setKeyOverride(NO_OVERRIDE);
           // Opening a song by hand doesn't cancel the set — it just tells us
           // where in it you now are, which is nowhere if the song isn't in it.
           setSetPos(activeSet?.songs.indexOf(id) ?? -1);
@@ -241,6 +264,7 @@ export function App() {
           setActiveSetId(id);
           setSetPos(pos);
           setRememberedId(set.songs[pos]!);
+          setKeyOverride(NO_OVERRIDE);
           setBrowsing(false);
         }}
         onClose={() => setBrowsing(false)}
@@ -248,7 +272,7 @@ export function App() {
     );
   }
 
-  if (song === null) return <p className="library__empty">Opening the library…</p>;
+  if (song === null || view === null) return <p className="library__empty">Opening the library…</p>;
 
   return (
     <>
@@ -272,6 +296,13 @@ export function App() {
           )}
           <button className="btn" onClick={() => setBrowsing(true)}>
             Songs
+          </button>
+          <button
+            className={`btn ${view.keys.transposed ? 'btn--moved' : ''}`}
+            onClick={() => setKeysOpen(true)}
+            aria-label={`Key and capo: ${keyBadge(view.keys)}${view.keys.transposed ? ', transposed' : ''}`}
+          >
+            {keyBadge(view.keys)}
           </button>
           <button className="btn" onClick={cycleStep} aria-label={`Page turn travels ${step * 100}% of the screen`}>
             Step {step * 100}%
@@ -299,9 +330,15 @@ export function App() {
         </div>
       </div>
 
-      <ChartView song={song} fontScale={fontScale} showLyrics={showLyrics} />
+      <ChartView
+        song={view.song}
+        keys={view.keys}
+        fontScale={fontScale}
+        showLyrics={showLyrics}
+        onKeys={() => setKeysOpen(true)}
+      />
 
-      {perform && !learning && <TapZones onTurn={turn} onReveal={revealChrome} hint={hintVisible} />}
+      {perform && !learning && !keysOpen && <TapZones onTurn={turn} onReveal={revealChrome} hint={hintVisible} />}
 
       {notice && (
         <p className="notice" role="status">
@@ -315,6 +352,16 @@ export function App() {
           onChange={setBindings}
           onClose={() => setLearning(false)}
           wake={wake}
+        />
+      )}
+
+      {keysOpen && (
+        <KeyPanel
+          keys={view.keys}
+          onKey={(key) => chooseKeys({ key })}
+          onCapo={(capo) => chooseKeys({ capo })}
+          onReset={() => setKeyOverride({ song, choice: {} })}
+          onClose={() => setKeysOpen(false)}
         />
       )}
     </>

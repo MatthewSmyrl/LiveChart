@@ -747,3 +747,67 @@ a.btn {
     transition: none !important;
   }
 }
+
+/* -------------------------------------------------------------- key and capo */
+
+/* A transposed chart must never look like an ordinary one — the worst failure
+   on stage is a chart that has moved and gives no sign of it. Amber, because
+   it is the colour already meaning "not as written". */
+.btn--moved {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.chart__keys {
+  padding: 0;
+  border: 0;
+  border-bottom: 1px dotted currentColor;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.chart__keys--moved,
+.chart__moved {
+  color: var(--warning);
+}
+
+.chart__moved {
+  font-weight: 600;
+}
+
+/* Rides in the sticky header, so the key is still on screen once the chart
+   header has scrolled away. Only rendered when transposed. */
+.section__key {
+  margin-left: auto;
+  padding: 0 0.4em;
+  border: 1px solid var(--warning);
+  border-radius: 0.3em;
+  color: var(--warning);
+  font-size: 0.8em;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.keys {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3.5rem, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.keys__key {
+  min-height: 2.75rem;
+  font-size: 1.05rem;
+}
+
+/* The file's own key, so the way back is visible without reading the reset
+   button. */
+.keys__key--file {
+  border-style: dashed;
+}
+
+.learn__status.keys__moved {
+  color: var(--warning);
+}
