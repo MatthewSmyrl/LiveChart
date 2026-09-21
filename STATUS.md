@@ -1,36 +1,99 @@
 # LiveChart — project status
 
-**Last updated:** 2026-09-20 · **Phases 0–5 complete, deployed and in use** ·
-122 tests locally, 114 in CI ·
+**Last updated:** 2026-09-21 · **Phases 0–5 deployed and in use; transposition
+6a–6d built, not yet deployed** · 171 tests locally, 163 in CI ·
 **live at https://matthewsmyrl.github.io/LiveChart/**
 
 ---
 
-## ⏳ Start here — transposition is planned and ready to build
+## ⏳ Start here — transposition is built, and waiting on two things
+
+**Built 2026-09-21, committed locally, not pushed.** Part 1 of
+`TRANSPOSITION-PLAN.md`, phases 6a–6d, plus the guide half of 6e:
+
+| Phase | Commit | What |
+|---|---|---|
+| 6a | `24e2cc0` | The tighter chord grammar. `Drums` is a literal now |
+| 6b | `27c1b7d` | `src/music/` — spelled notes, intervals, R2.7/R2.8, `viewSong`. 38 tests |
+| 6c | `359f069` | Key button, key panel, header readout, amber transposed marker |
+| 6d | `40c1b41` | `SetEntry`, normalise-on-read, backup v3, pins in the set editor |
+| 6e (guide) | *this commit* | `using.md`, `setlists.md`, `lcf-format.md`, `README.md` |
+
+**What still stands between this and the iPad, in order:**
+
+1. **The library check (plan §9 item 4).** Matt exports a backup bundle from the
+   iPad to this machine, then:
+   `node scripts/check-grammar.mjs <bundle.json>` — lists every token 6a turns
+   from a chord into a literal. The charts here produce none. **Do not push
+   before this is done**: 6a changes how existing charts render.
+2. **Push, verify the deploy, and the iPad run with the pedal** — the rest of
+   6e. Force-quit and relaunch first. What to check is in *Transposition —
+   the iPad run* below.
+
+**Part 2 — `NUMERALS-PLAN.md` — is decided but not yet planned.** Roman
+numerals, contributed by **Lance Ruby, who is to be credited in the guide**. It
+waits on Lance confirming one rule for bass digits. **Ask whether that came
+back** before writing its plan. It builds on `src/music/` and the key panel,
+both now in place.
+
+### Transposition — calls made during the build
+
+Each is a reading of the plan, not a new decision; Matt may want to confirm the
+first four on the device.
+
+- **The sticky-header marker (plan §9 item 1)** is built as the default: when
+  transposed, the key rides at the right of every section header in amber —
+  `F·2`. Nothing when untransposed. Decide on the iPad.
+- **Setlist rows open the key panel when you tap the song title.** R4.8 wants
+  pinning without opening the chart, and R4.9 wants nothing on an unpinned row,
+  so there is no per-row Key button — the title is the control, with a one-line
+  hint above the list.
+- **Reset** returns to the setlist's pin when the song is playing from a set
+  that pins one, and to the file otherwise; the button says which.
+- **The chart header always shows the key now**, `Key C` for a file with none
+  (R6.1). It is also the second way into the panel (R4.4).
+- A pin that restates the file's own key or capo **isn't stored**, so picking
+  the song's key again clears the row.
+- **Opening a song always clears a toolbar key**, including reopening the one
+  already up — R3.1. The Lyrics override does *not* reset on reopening the same
+  song; that is older behaviour and was left alone.
+- **R7.1: `MIN_BAR_EM` stays 4.** Accidentals render as a 0.68em superscript,
+  so `G#maj9#11` measures only 0.02em wider than `Bbmaj9#11`. The widest
+  realistic product of transposition, `C#m7b5/G#` (from `F#m7b5/C#` up a fifth),
+  measures 3.90em.
+- **The key panel suspends the pedal and tap zones** while it is up, like the
+  Pedal screen. R4.3 asks for exactly this.
+
+### Transposition — the iPad run
+
+Verified in the preview pane, 2026-09-21: every row of plan §1.5 against *That
+Funny Feeling*; G♭'s IV shown as B and the ♭VII as E; Reset clearing every
+amber marker; a toolbar key cleared by opening any song, the same one included;
+a **setlist stored in the old `string[]` shape**, written straight into
+IndexedDB, loading intact and saving back in the new shape only when edited; a
+pin on position 3 of a set with the same song at 1 and 3 — C at 1, D at 3; a
+toolbar capo on top of a pinned key keeping the key (R3.5); page turns
+suspended while the panel is open.
+
+On the iPad, with the pedal:
+
+- The amber marker reads as "transposed" at gig distance — and the sticky
+  marker is worth its place (plan §9 item 1).
+- The panel's key grid is comfortable to hit standing up.
+- A real set carrying pinned keys walks through with the pedal.
+- The old setlists on the device survive the update — the one test only the
+  device can do.
 
 **Phase 5 is settled.** Setlists shipped 2026-08-17 (`c1a2f1e`), were verified
 live, and Matt reported on 2026-09-05 that **the app is working well so far** in
 actual use. That closes the pedal-and-setlist question this section carried for
 three weeks. Nothing from that run needs fixing.
 
-**The next work is transposition, now split in two** (2026-09-20):
-
-- **Part 1 — `TRANSPOSITION-PLAN.md` — is fully decided and ready to build.**
-  Letter chords only: the `Key − Capo` model, key-aware spelling, Key and Capo
-  in the toolbar and on setlist entries, and a tighter chord grammar. Build order
-  is phases **6a–6e** in its §10. Read it before touching this feature; the
-  spelling model is not what you would guess, and semitone arithmetic is the
-  tempting wrong shortcut.
-- **Part 2 — `NUMERALS-PLAN.md` — is decided but not yet planned.** Roman
-  numerals, contributed by **Lance Ruby, who is to be credited in the guide**.
-  It waits on Lance confirming one rule for bass digits. **Ask whether that
-  came back** before writing its plan. Part 1 does not wait for it.
-
-**One thing 6a needs from Matt before it ships:** a backup bundle exported from
-the iPad to this machine, so the tighter grammar can be checked against his
-whole library rather than the four charts here. See Part 1, §9 item 4.
-
-Every decision in both documents is Matt's, with dates, and not to be reopened
+**Transposition was split in two** (2026-09-20): Part 1, `TRANSPOSITION-PLAN.md`,
+letter chords — now built, see above; Part 2, `NUMERALS-PLAN.md`, numerals.
+Read Part 1 before touching this feature; the spelling model is not what you
+would guess, and semitone arithmetic is the tempting wrong shortcut. Every
+decision in both documents is Matt's, with dates, and not to be reopened
 without him.
 
 **The real-world import and backup thread is closed** — Matt confirmed
@@ -649,17 +712,9 @@ a broken page turn and isn't one. Either display the pane, or
 
 ## Next
 
-**Transposition, Part 1 — ready to build.** `TRANSPOSITION-PLAN.md`. The chart
-draws `Key − Capo`; both are adjustable from the toolbar and pinnable on a
-setlist entry. Keys take flats except F♯ and C♯, chords follow the key's
-signature, and C♭/F♭/E♯/B♯ display as B/E/F/C. Build order:
-
-- **6a** — tighter chord grammar, so words like `Drums` stop parsing as chords.
-  Needs the iPad library check first.
-- **6b** — `src/music/`, pure: spelled notes and intervals. Tests only.
-- **6c** — Key and Capo in the app.
-- **6d** — setlist entries, backup v3.
-- **6e** — guide, deploy, iPad.
+**Transposition, Part 1 — built, not deployed.** `TRANSPOSITION-PLAN.md`. 6a–6d
+and the guide are committed locally; what remains is the iPad library check,
+the deploy and the iPad run. See *Start here*.
 
 **Numerals, Part 2 — waiting on Lance Ruby.** `NUMERALS-PLAN.md` records what is
 decided. Builds on 6b and 6c, so it comes after Part 1 regardless.
@@ -668,6 +723,11 @@ decided. Builds on 6b and 6c, so it comes after Part 1 regardless.
   image-only, no text layer), sharing.
 
 ### Smaller ideas, not yet scheduled
+- **`%` inside a bar.** *Let It Be* writes `|F % Em Dm|`, meaning "F again for a
+  beat". The format only knows `%` alone in a bar, so this `%` renders as a
+  dimmed literal — it always has, and it never transposes, so it is harmless.
+  Found by `scripts/check-grammar.mjs` on 2026-09-21. A beat-repeat token would
+  be a format change, so it is Matt's call.
 - **Toggling lyrics mid-song.** The per-song `Lyrics:` default landed on
   2026-08-11, so the decision is now carried by the file. What is still missing
   is changing your mind *during* a song: the Lyrics button lives in the toolbar

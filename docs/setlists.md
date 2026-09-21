@@ -15,6 +15,7 @@ setlist; this is a layer on top.
 ## Contents
 
 - [Making one](#making-one)
+  - [A key for each song](#a-key-for-each-song)
 - [Playing a set](#playing-a-set)
 - [Songs that aren't there](#songs-that-arent-there)
 - [Backing them up](#backing-them-up)
@@ -46,6 +47,22 @@ encore is the same song played a second time, and the app treats it as a
 position in the night rather than as a duplicate to be cleaned up.
 
 Everything saves as you go. There's no separate save step.
+
+### A key for each song
+
+**Tap a song in the set** to choose the key and capo it's played at in this
+set. It's the same panel as on the chart — see
+[Key and capo](using.md#key-and-capo). The song's file isn't changed; the key
+belongs to that place in the running order, so whenever the set reaches it, the
+chart opens transposed.
+
+It's per *position*, not per song: the same song twice in a night can be in two
+keys. A row shows the key and capo you set, and nothing at all when you haven't
+— picking the song's own key again clears it.
+
+Key and capo are separate. Set only a capo, and the song keeps its own key.
+Changing either from the chart during the gig lasts until you leave the song,
+then the setlist's choice is back.
 
 ---
 
@@ -117,7 +134,8 @@ Restoring merges by set: a set already on the device is only overwritten if the
 one in the bundle is **newer**. So restoring last month's backup won't undo a
 running order you fixed this afternoon.
 
-Backups written before setlists existed restore exactly as they always did.
+Backups written before setlists existed restore exactly as they always did, and
+so do backups written before a set could carry keys.
 
 ---
 

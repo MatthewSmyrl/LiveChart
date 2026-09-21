@@ -1,6 +1,9 @@
 # LiveChart v2, Part 1 — Transposition
 
-**Status:** requirements and plan, **ready to build**. Nothing here is built yet.
+**Status:** **6a–6d built 2026-09-21**, with the guide half of 6e; committed,
+not yet deployed. Waiting on the library check (§9 item 4), then the deploy and
+the iPad run. How each requirement was read during the build is in `STATUS.md`,
+*Transposition — calls made during the build*.
 First written 2026-09-05, rewritten 2026-09-20 as Part 1 of two.
 
 This is the letter-chord half of what began as one "transposition" feature. The
@@ -386,6 +389,8 @@ None blocks starting. Each has a default that holds unless Matt says otherwise.
 4. **The full library check** for §6.2. **Needs Matt:** export a backup bundle
    from the iPad to this machine before 6a ships, so every real chart can be run
    through the new grammar and any token that changes class reviewed together.
+   The tool is ready: `node scripts/check-grammar.mjs <bundle.json>`. On the
+   five charts here, including *Louisiana Rain*, it finds nothing that changes.
 
 ---
 

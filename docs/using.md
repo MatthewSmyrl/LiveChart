@@ -16,6 +16,7 @@ Along the top, left to right:
 |---|---|
 | **A−** · **%** · **A+** | Display size, in 10-point steps from 60% to 220%. The reading between them is where you are now. Everything scales together — chords, lyrics, section headers, bar widths. |
 | **Songs** | Opens the library: import, back up, export, delete, pick what to play, and build [setlists](setlists.md). |
+| **E** · **E·2** | The key the song sounds in, and the capo fret when there is one. Opens [key and capo](#key-and-capo). Turns amber when the chart is transposed. |
 | **Step 75%** | How far one page turn travels — cycles **50% → 75% → 100%**. See [page turns](#page-turns) below. |
 | **Pedal** | The learn screen, for teaching the app what your pedal sends. Also where the screen-awake status lives. |
 | **Lyrics** | Shows or hides the lyric lines. Lit up when they're on. |
@@ -26,8 +27,9 @@ Size, step, theme and pedal bindings are remembered between sessions, so the
 toolbar shows whatever you last set rather than the defaults described here.
 Lyrics are the exception — see [below](#lyrics).
 
-Above the chart itself you'll see the song's title and, if the file supplies
-them, the artist, key, capo, time signature and tempo.
+Above the chart itself you'll see the song's title, the key and capo in force,
+and, if the file supplies them, the artist, time signature and tempo. Tapping
+the key opens [key and capo](#key-and-capo) too.
 
 The app **reopens on whatever song you last had open**. Starting it mid-set
 shouldn't cost you a tap.
@@ -133,6 +135,61 @@ in them open however you last left the button.
 
 One current limitation: the Lyrics button is in the toolbar, which hides itself
 during a song. Changing your mind mid-song means tapping the menu band first.
+
+---
+
+## Key and capo
+
+**The chart draws the shapes your hands make.** The key is what the song sounds
+like, the capo is where the capo sits, and the chords on screen are the ones
+you'd play with the capo on.
+
+So a song in E with the capo at 2 is drawn in D shapes. Take the capo off and
+the same song is drawn in E. Keep the capo at 2 but sing it a tone lower, in D,
+and it's drawn in C shapes. Move the capo *and* the key together — E at capo 2,
+D with no capo, G at capo 5 — and the page doesn't change at all, because your
+hands don't.
+
+Tap the key in the toolbar, or in the chart header, to open the panel:
+
+- **The keys** — tap the one you want the song to sound in. The song's own key
+  has a dashed outline.
+- **Capo** — **−** and **+** move it a fret at a time, from none to the 11th.
+- **Reset** puts the key and capo back to what the file says — or, when the
+  song is playing from a setlist that sets a key for it, to what the setlist
+  says.
+
+**A transposed chart is always marked.** The key button goes amber, the chart
+header says what it was transposed from, and the key rides in every section
+header, so it's still on screen once you've scrolled past the top. A chart
+showing none of that is exactly as its file was written.
+
+**It's for this song, this time.** Like the Lyrics button, a key you choose here
+lasts as long as the song is up. Open the song again — or move on to another
+and come back — and it's back in the file's key. To keep a key for a
+particular gig, set it on the [setlist](setlists.md#a-key-for-each-song) instead.
+
+It's a stop between songs, not something to do mid-song: while the panel is
+open, the pedal and the tap zones do nothing.
+
+### How the chords are spelled
+
+Chords follow the key they're in, the way a written chart would: in B♭ the four
+chord is E♭, not D♯; in E the three chord is G♯m, not A♭m.
+
+- Keys are named with flats, except **F♯** and **C♯**. **G♭** and **D♭** are
+  there too, for songs you think of that way. Minor keys are C♯m, E♭m, G♯m and
+  B♭m.
+- **C♭, F♭, E♯ and B♯ are shown as B, E, F and C.** They're correct on paper,
+  and no use to anyone at a gig. Nor will you ever see a double sharp or
+  double flat.
+- The rest of a chord — `maj7`, `sus4`, `7(b9)` — comes along unchanged, and a
+  slash bass note moves with the chord.
+- Only chords move. Rests, `N.C.` and any words you've put in a bar stay as they
+  are.
+
+The chart's file is never changed — exporting a song always gives you the chart
+as you wrote it.
 
 ---
 

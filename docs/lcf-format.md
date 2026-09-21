@@ -102,8 +102,8 @@ section.
 |---|---|---|
 | `Title` | **yes** | The name the song is filed and displayed under |
 | `Artist` | no | Shown under the title |
-| `Key` | no | The sounding key — `E`, `Bbm` |
-| `Capo` | no | Fret number. `2` and `2nd fret` both work; read as a whole number |
+| `Key` | no | The key the song sounds in — `E`, `Bbm`, `F# minor`. Defaults to C. See below |
+| `Capo` | no | Fret number. `2` and `2nd fret` both work; read as a whole number. See below |
 | `Time` | no | `4/4`, `3/4`, `6/8`, `7/8`… Defaults to `4/4`. Affects layout — see below |
 | `Tempo` | no | BPM, a whole number |
 | `Lyrics` | no | Whether this song opens with lyrics shown. See below |
@@ -116,8 +116,32 @@ but not displayed anywhere today**. They survive a round trip through import,
 backup and export, so they're a safe place to leave yourself a reminder — you
 just won't see it on the chart.
 
-The chart header displays the title, and then whichever of artist, key, capo,
-time signature and tempo the file supplies.
+The chart header displays the title, the key and capo, and then whichever of
+artist, time signature and tempo the file supplies.
+
+### `Key` and `Capo`
+
+**`Key` is how the song sounds, and the chords are written in the shapes you
+play.** With a capo on, those are two different keys: a song that sounds in E,
+played with the capo at 2, is written in D shapes.
+
+```
+Key: E
+Capo: 2
+...
+|D/A |G |Em |A |
+```
+
+That's what the app needs to know to [transpose](using.md#key-and-capo) a chart:
+it takes the chords as written in `Key` minus `Capo`, and redraws them in
+whatever key and capo you choose. Write the shapes you actually play, and put
+the sounding key in `Key`.
+
+`Key` is a note `A`–`G`, an optional `#` or `b`, and for a minor key `m`, `min`,
+`minor` or `-`: `E`, `Bb`, `F#m`, `C minor`. Leave it out and the chords are
+taken as written in C, which only matters if you transpose. Something the app
+can't read as a key gets a warning above the chart, and is treated as C too —
+the chart still shows.
 
 ### `Lyrics`
 
