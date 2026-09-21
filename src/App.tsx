@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseLcf } from './lcf/parse';
 import type { Song } from './lcf/types';
-import { type KeyChoice, viewSong } from './music/transpose';
+import { type KeyChoice, keyBadge, viewSong } from './music/transpose';
 import { ChartView } from './render/ChartView';
-import { KeyPanel, keyBadge } from './render/KeyPanel';
+import { KeyPanel } from './render/KeyPanel';
 import { LibraryView } from './library/LibraryView';
 import { idFor } from './library/identity';
 import { preferredSeedTitle } from './library/seed';
-import { firstPlayable, stepPosition } from './library/setlists';
+import { choiceFor, firstPlayable, stepPosition } from './library/setlists';
 import { useLibrary } from './library/useLibrary';
 import { PedalLearn } from './perform/PedalLearn';
 import { TapZones } from './perform/TapZones';
@@ -141,7 +141,17 @@ export function App() {
   const [keyOverride, setKeyOverride] = useState<KeyOverride>(NO_OVERRIDE);
   const keyChoice = keyOverride.song === song ? keyOverride.choice : {};
   const chooseKeys = (patch: KeyChoice) => setKeyOverride({ song, choice: { ...keyChoice, ...patch } });
-  const view = useMemo(() => (song ? viewSong(song, keyChoice) : null), [song, keyChoice.key, keyChoice.capo]);
+
+  // Under the toolbar sits the setlist: a key or capo pinned on the position
+  // being played, when the song on screen is the one at that position. Off the
+  // set, the file's values apply. Key and capo each fall through on their own,
+  // so nudging the key leaves a pinned capo alone (R3.5).
+  const setEntry = activeSet && setPos >= 0 ? activeSet.songs[setPos] : undefined;
+  const pinnedEntry = setEntry?.id === currentId ? setEntry : undefined;
+  const pinned = useMemo(() => choiceFor(pinnedEntry), [pinnedEntry]);
+  const base = useMemo(() => (song ? viewSong(song, pinned).keys : null), [song, pinned.key, pinned.capo]);
+  const choice: KeyChoice = { ...pinned, ...keyChoice };
+  const view = useMemo(() => (song ? viewSong(song, choice) : null), [song, choice.key, choice.capo]);
   const [keysOpen, setKeysOpen] = useState(false);
 
   useEffect(() => {
@@ -200,7 +210,7 @@ export function App() {
    */
   const goTo = useCallback(
     (pos: number) => {
-      const id = activeSet?.songs[pos];
+      const id = activeSet?.songs[pos]?.id;
       if (!id) return;
       setSetPos(pos);
       setRememberedId(id);
@@ -254,7 +264,7 @@ export function App() {
           setKeyOverride(NO_OVERRIDE);
           // Opening a song by hand doesn't cancel the set — it just tells us
           // where in it you now are, which is nowhere if the song isn't in it.
-          setSetPos(activeSet?.songs.indexOf(id) ?? -1);
+          setSetPos(activeSet?.songs.findIndex((e) => e.id === id) ?? -1);
           setBrowsing(false);
         }}
         onStartSet={(id) => {
@@ -263,7 +273,7 @@ export function App() {
           if (!set || pos === null) return;
           setActiveSetId(id);
           setSetPos(pos);
-          setRememberedId(set.songs[pos]!);
+          setRememberedId(set.songs[pos]!.id);
           setKeyOverride(NO_OVERRIDE);
           setBrowsing(false);
         }}
@@ -272,7 +282,7 @@ export function App() {
     );
   }
 
-  if (song === null || view === null) return <p className="library__empty">Opening the library…</p>;
+  if (song === null || view === null || base === null) return <p className="library__empty">Opening the library…</p>;
 
   return (
     <>
@@ -358,6 +368,8 @@ export function App() {
       {keysOpen && (
         <KeyPanel
           keys={view.keys}
+          base={base}
+          baseIsSet={pinnedEntry !== undefined && (pinned.key !== undefined || pinned.capo !== undefined)}
           onKey={(key) => chooseKeys({ key })}
           onCapo={(capo) => chooseKeys({ capo })}
           onReset={() => setKeyOverride({ song, choice: {} })}

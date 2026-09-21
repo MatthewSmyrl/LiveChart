@@ -1,9 +1,12 @@
-import type { Setlist } from './types';
+import { noteName, parseKey } from '../music/notes';
+import type { KeyChoice } from '../music/transpose';
+import type { SetEntry, Setlist } from './types';
 
 /**
  * Setlists, and the pure rules for moving around one.
  *
- * A setlist is an ordered list of song ids. Two things about that are
+ * A setlist is an ordered list of entries, each a song id with an optional
+ * pinned key and capo. Two things about that are
  * deliberate:
  *
  * - **Entries may repeat.** A reprise in the encore is the same song played
@@ -30,8 +33,75 @@ export function newSetlist(name: string, now: number = Date.now(), id = newSetli
   return { id, name: name.trim() || 'Untitled set', songs: [], createdAt: now, updatedAt: now };
 }
 
-function stamp(setlist: Setlist, songs: string[], now: number): Setlist {
+function stamp(setlist: Setlist, songs: SetEntry[], now: number): Setlist {
   return { ...setlist, songs, updatedAt: now };
+}
+
+// ---------------------------------------------------------------------------
+// Entries — read defensively, because they come from storage and from backups
+// ---------------------------------------------------------------------------
+
+/** A pinnable key root: spelled, major-form, e.g. `Gb`. Null if it isn't one. */
+function readPinnedKey(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const key = parseKey(raw);
+  return key && !key.minor ? noteName(key.tonic) : undefined;
+}
+
+function readPinnedCapo(raw: unknown): number | undefined {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw >= 0 && raw <= 11 ? raw : undefined;
+}
+
+/**
+ * One entry, from whatever shape it was stored in. A bare string is a set
+ * saved before entries existed; an object is today's shape. Pins that don't
+ * read are dropped rather than failing the entry — the song still plays, in
+ * its file's key. Null only when there is no song id at all.
+ */
+export function readEntry(raw: unknown): SetEntry | null {
+  if (typeof raw === 'string') return raw.trim() ? { id: raw } : null;
+  if (typeof raw !== 'object' || raw === null) return null;
+  const e = raw as Record<string, unknown>;
+  if (typeof e.id !== 'string' || !e.id.trim()) return null;
+  const key = readPinnedKey(e.key);
+  const capo = readPinnedCapo(e.capo);
+  return { id: e.id, ...(key ? { key } : {}), ...(capo === undefined ? {} : { capo }) };
+}
+
+export function readEntries(raw: unknown): SetEntry[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(readEntry).filter((e): e is SetEntry => e !== null);
+}
+
+/**
+ * A setlist as it came out of storage, in today's shape. Normalised on every
+ * read rather than migrated once: a migration that fails halfway is the wrong
+ * risk to take with a running order.
+ */
+export function normaliseSetlist(stored: Setlist): Setlist {
+  return { ...stored, songs: readEntries(stored.songs as unknown) };
+}
+
+/** The key choice an entry pins, for `viewSong`. Empty when it pins nothing. */
+export function choiceFor(entry: SetEntry | undefined): KeyChoice {
+  if (!entry) return {};
+  const key = entry.key ? parseKey(entry.key) : null;
+  return { ...(key ? { key: key.tonic } : {}), ...(entry.capo === undefined ? {} : { capo: entry.capo }) };
+}
+
+/** Sets or clears the key and capo pinned at one position. Undefined clears. */
+export function pinAt(
+  setlist: Setlist,
+  index: number,
+  pin: { key?: string | undefined; capo?: number | undefined },
+  now: number = Date.now(),
+): Setlist {
+  const entry = setlist.songs[index];
+  if (!entry) return setlist;
+  const key = readPinnedKey(pin.key);
+  const capo = readPinnedCapo(pin.capo);
+  const next: SetEntry = { id: entry.id, ...(key ? { key } : {}), ...(capo === undefined ? {} : { capo }) };
+  return stamp(setlist, setlist.songs.map((e, i) => (i === index ? next : e)), now);
 }
 
 export function renameSetlist(setlist: Setlist, name: string, now: number = Date.now()): Setlist {
@@ -40,7 +110,7 @@ export function renameSetlist(setlist: Setlist, name: string, now: number = Date
 
 /** Appends. Adding a song already in the set is a reprise, not a mistake. */
 export function addToSetlist(setlist: Setlist, songId: string, now: number = Date.now()): Setlist {
-  return stamp(setlist, [...setlist.songs, songId], now);
+  return stamp(setlist, [...setlist.songs, { id: songId }], now);
 }
 
 export function removeAt(setlist: Setlist, index: number, now: number = Date.now()): Setlist {
@@ -74,20 +144,20 @@ export function moveBy(setlist: Setlist, index: number, delta: number, now: numb
  * round to the opener after the last chord of the night.
  */
 export function stepPosition(
-  songs: readonly string[],
+  songs: readonly SetEntry[],
   from: number,
   delta: 1 | -1,
   exists: (songId: string) => boolean,
 ): number | null {
   if (from < 0 && delta === -1) return null;
   for (let i = (from < 0 ? -1 : from) + delta; i >= 0 && i < songs.length; i += delta) {
-    if (exists(songs[i]!)) return i;
+    if (exists(songs[i]!.id)) return i;
   }
   return null;
 }
 
 /** The first playable position, or null if the whole set is missing. */
-export function firstPlayable(songs: readonly string[], exists: (songId: string) => boolean): number | null {
+export function firstPlayable(songs: readonly SetEntry[], exists: (songId: string) => boolean): number | null {
   return stepPosition(songs, -1, 1, exists);
 }
 

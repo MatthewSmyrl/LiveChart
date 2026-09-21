@@ -2,11 +2,6 @@ import { useEffect } from 'react';
 import { type Note, pickerKeys, prettyKey, prettyNote, sameNote } from '../music/notes';
 import type { KeyState } from '../music/transpose';
 
-/** `E`, or `E·2` with a capo on. What the toolbar's Key button reads. */
-export function keyBadge(keys: KeyState): string {
-  return prettyKey(keys.appKey) + (keys.appCapo ? `·${keys.appCapo}` : '');
-}
-
 /**
  * Key and capo for the song on screen — a deliberate stop between numbers, not
  * a mid-song action, so it sits over the chart like the pedal screen and holds
@@ -14,12 +9,21 @@ export function keyBadge(keys: KeyState): string {
  */
 export function KeyPanel({
   keys,
+  base,
+  baseIsSet = false,
+  title = 'Key and capo',
+  intro = 'The key is how the song sounds; the chart draws the shapes you play with the capo on.',
   onKey,
   onCapo,
   onReset,
   onClose,
 }: {
   keys: KeyState;
+  /** What Reset returns to: the setlist's pinned values, or the file's. */
+  base: KeyState;
+  baseIsSet?: boolean;
+  title?: string;
+  intro?: string;
   onKey: (key: Note) => void;
   onCapo: (capo: number) => void;
   onReset: () => void;
@@ -33,22 +37,20 @@ export function KeyPanel({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
-  const { appKey, appCapo, fileKey, fileCapo, shapeKey, transposed } = keys;
-  const minor = fileKey.minor;
-  const atFile = sameNote(appKey.tonic, fileKey.tonic) && appCapo === fileCapo;
+  const { appKey, appCapo, shapeKey, transposed } = keys;
+  const minor = keys.fileKey.minor;
+  const atBase = sameNote(appKey.tonic, base.appKey.tonic) && appCapo === base.appCapo;
 
   return (
-    <div className="learn" role="dialog" aria-modal="true" aria-label="Key and capo">
+    <div className="learn" role="dialog" aria-modal="true" aria-label={title}>
       <div className="learn__panel">
-        <h2 className="learn__title">Key and capo</h2>
-        <p className="learn__intro">
-          The key is how the song sounds; the chart draws the shapes you play with the capo on.
-        </p>
+        <h2 className="learn__title">{title}</h2>
+        <p className="learn__intro">{intro}</p>
 
         <div className="keys" role="group" aria-label="Sounding key">
           {pickerKeys(minor).map((k) => {
             const on = sameNote(k, appKey.tonic);
-            const isFile = sameNote(k, fileKey.tonic);
+            const isFile = sameNote(k, base.appKey.tonic);
             return (
               <button
                 key={prettyNote(k)}
@@ -92,9 +94,9 @@ export function KeyPanel({
         </p>
 
         <div className="learn__actions">
-          <button className="btn" onClick={onReset} disabled={atFile}>
-            Reset to file ({prettyKey(fileKey)}
-            {fileCapo ? `, capo ${fileCapo}` : ''})
+          <button className="btn" onClick={onReset} disabled={atBase}>
+            Reset to {baseIsSet ? 'set' : 'file'} ({prettyKey(base.appKey)}
+            {base.appCapo ? `, capo ${base.appCapo}` : ''})
           </button>
           <button className="btn btn--on" onClick={onClose}>
             Done

@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import type { Song } from '../lcf/types';
 import { prettyKey } from '../music/notes';
-import type { KeyState } from '../music/transpose';
-import { keyBadge } from './KeyPanel';
+import { type KeyState, keyBadge } from '../music/transpose';
 import { SectionView } from './SectionView';
 import { useBarsPerRow } from './useBarsPerRow';
 

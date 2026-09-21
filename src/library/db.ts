@@ -1,3 +1,4 @@
+import { normaliseSetlist } from './setlists';
 import type { Setlist, StoredSong } from './types';
 
 const DB_NAME = 'livechart';
@@ -90,6 +91,8 @@ export const loadSongs = (): Promise<StoredSong[]> => readAll<StoredSong>(STORE,
 export const saveSongs = (songs: StoredSong[]): Promise<void> => writeAll(STORE, songs);
 export const deleteSong = (id: string): Promise<void> => deleteRow(STORE, id);
 
-export const loadSetlists = (): Promise<Setlist[]> => readAll<Setlist>(SETS, 'setlists');
+/** Normalised as they load: sets saved before entries existed hold bare ids. */
+export const loadSetlists = async (): Promise<Setlist[]> =>
+  (await readAll<Setlist>(SETS, 'setlists')).map(normaliseSetlist);
 export const saveSetlists = (setlists: Setlist[]): Promise<void> => writeAll(SETS, setlists);
 export const deleteSetlist = (id: string): Promise<void> => deleteRow(SETS, id);

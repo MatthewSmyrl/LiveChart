@@ -1,9 +1,14 @@
 import { identify, looksLikeChart } from './identity';
+import { readEntries } from './setlists';
 import type { Setlist, StoredSong } from './types';
 
 export const BACKUP_FORMAT = 'livechart-backup';
-/** 2 added `setlists`. A version 1 bundle simply has none, and still restores. */
-export const BACKUP_VERSION = 2;
+/**
+ * 2 added `setlists`; 3 made their entries objects that can pin a key and
+ * capo. Older bundles still restore — version 1 simply has no sets, and
+ * version 2's bare ids are read as entries pinning nothing.
+ */
+export const BACKUP_VERSION = 3;
 
 export interface BackupSong {
   title: string;
@@ -123,9 +128,10 @@ function readBackup(json: string): ParsedImport | null {
       if (typeof entry !== 'object' || entry === null) continue;
       const set = entry as Record<string, unknown>;
       if (typeof set.id !== 'string' || !set.id.trim()) continue;
-      const songs = Array.isArray(set.songs)
-        ? set.songs.filter((s): s is string => typeof s === 'string' && !!s.trim())
-        : [];
+      // Version 2 wrote bare ids, version 3 entries with pinned keys; both
+      // read into today's shape, and an unreadable pin is dropped rather than
+      // costing the entry.
+      const songs = readEntries(set.songs);
       const createdAt = typeof set.createdAt === 'number' ? set.createdAt : 0;
       setlists.push({
         id: set.id,

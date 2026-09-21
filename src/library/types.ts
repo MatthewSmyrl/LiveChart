@@ -18,19 +18,35 @@ export interface StoredSong {
 }
 
 /**
+ * One position in a running order: a song, and optionally the key and capo it
+ * is played at from this set. Per position rather than per song, so the same
+ * song twice in a night can sit in two keys.
+ */
+export interface SetEntry {
+  /** A `StoredSong.id`. */
+  id: string;
+  /** The sounding key's spelled root only — `"Gb"`, `"Eb"`. Mode comes from the file. */
+  key?: string;
+  /** 0–11. */
+  capo?: number;
+}
+
+/**
  * A running order.
  *
- * `songs` holds `StoredSong.id`s in playing order. Because those ids are
- * derived from the title, a setlist survives re-importing an edited chart —
- * which is the whole reason song identity works that way.
+ * `songs` holds entries in playing order. Their ids are derived from the
+ * title, so a setlist survives re-importing an edited chart — which is the
+ * whole reason song identity works that way.
  *
  * Entries may repeat and may point at songs that aren't here; see `setlists.ts`.
+ * Sets stored before entries existed hold bare ids, and are normalised as they
+ * are read — never migrated in place.
  */
 export interface Setlist {
   /** Random, not derived from the name, so renaming is free. */
   id: string;
   name: string;
-  songs: string[];
+  songs: SetEntry[];
   /** ms since epoch. */
   createdAt: number;
   updatedAt: number;

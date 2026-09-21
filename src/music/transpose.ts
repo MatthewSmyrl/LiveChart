@@ -22,6 +22,7 @@ import {
   noteName,
   parseKey,
   pitchOf,
+  prettyKey,
   sameKey,
 } from './notes';
 
@@ -161,4 +162,9 @@ export function transposeSong(song: Song, iv: Interval, shapeKey: Key): Song {
 export function viewSong(song: Song, choice: KeyChoice = {}): { song: Song; keys: KeyState } {
   const keys = resolveKeys(song, choice);
   return { song: transposeSong(song, keys.interval, keys.shapeKey), keys };
+}
+
+/** `E`, or `E·2` with a capo on. What the toolbar's Key button reads. */
+export function keyBadge(keys: KeyState): string {
+  return prettyKey(keys.appKey) + (keys.appCapo ? `·${keys.appCapo}` : '');
 }

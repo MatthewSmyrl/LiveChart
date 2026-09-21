@@ -1,15 +1,78 @@
 import { useMemo, useState } from 'react';
+import { parseLcf } from '../lcf/parse';
+import { type Note, noteName, parseKey, prettyNote, sameNote } from '../music/notes';
+import { resolveKeys } from '../music/transpose';
+import { KeyPanel } from '../render/KeyPanel';
 import {
   addToSetlist,
   byName,
+  choiceFor,
   firstPlayable,
   moveBy,
   newSetlist,
+  pinAt,
   removeAt,
   renameSetlist,
 } from './setlists';
 import { byTitle } from './merge';
-import type { Setlist, StoredSong } from './types';
+import type { SetEntry, Setlist, StoredSong } from './types';
+
+/** `Key G♭ · Capo 2`, or null when the entry pins nothing. */
+function pinLabel(entry: SetEntry): string | null {
+  const key = entry.key ? parseKey(entry.key) : null;
+  const parts = [
+    ...(key ? [`Key ${prettyNote(key.tonic)}`] : []),
+    ...(entry.capo === undefined ? [] : [`Capo ${entry.capo}`]),
+  ];
+  return parts.length ? parts.join(' · ') : null;
+}
+
+/**
+ * The key panel for one position in a set — the same panel as on the chart,
+ * so there is one way to pick a key. What it writes is pinned to the position,
+ * and a pin that only restates the file is not kept, so a row goes back to
+ * showing nothing when it is back at the file's key.
+ */
+function EntryKeys({
+  setlist,
+  index,
+  song,
+  onChange,
+  onClose,
+}: {
+  setlist: Setlist;
+  index: number;
+  song: StoredSong;
+  onChange: (setlist: Setlist) => void;
+  onClose: () => void;
+}) {
+  const parsed = useMemo(() => parseLcf(song.text), [song.text]);
+  const entry = setlist.songs[index];
+  if (!entry) return null;
+
+  const file = resolveKeys(parsed);
+  const keys = resolveKeys(parsed, choiceFor(entry));
+  const pin = (key: Note, capo: number) =>
+    onChange(
+      pinAt(setlist, index, {
+        key: sameNote(key, file.fileKey.tonic) ? undefined : noteName(key),
+        capo: capo === file.fileCapo ? undefined : capo,
+      }),
+    );
+
+  return (
+    <KeyPanel
+      keys={keys}
+      base={file}
+      title={`${song.title} — number ${index + 1}`}
+      intro="Played at this key and capo whenever the set reaches this position. The file itself is not changed."
+      onKey={(key) => pin(key, keys.appCapo)}
+      onCapo={(capo) => pin(keys.appKey.tonic, Math.min(11, Math.max(0, capo)))}
+      onReset={() => onChange(pinAt(setlist, index, {}))}
+      onClose={onClose}
+    />
+  );
+}
 
 /**
  * Two different reasons a set can't be started, wanting different explanations:
@@ -145,6 +208,10 @@ function SetlistEditor({
   // list isn't re-sorted — once per keystroke. Committed on blur and on Done.
   const [draftName, setDraftName] = useState(setlist.name);
   const [confirming, setConfirming] = useState(false);
+  // The position whose key panel is open.
+  const [pinning, setPinning] = useState<number | null>(null);
+  const pinningId = pinning === null ? undefined : setlist.songs[pinning]?.id;
+  const pinningSong = pinningId ? songs.find((s) => s.id === pinningId) : undefined;
   const commitName = () => {
     if (draftName.trim() !== setlist.name) onChange(renameSetlist(setlist, draftName));
   };
@@ -198,19 +265,32 @@ function SetlistEditor({
       {setlist.songs.length === 0 ? (
         <p className="library__empty">Nothing in this set yet. Add songs from the list below.</p>
       ) : (
-        <ol className="library__list">
-          {setlist.songs.map((songId, i) => {
+        <>
+          <p className="library__hint">Tap a song to set the key and capo it's played at in this set.</p>
+          <ol className="library__list">
+          {setlist.songs.map((entry, i) => {
+            const songId = entry.id;
             const title = titles.get(songId);
+            const pin = pinLabel(entry);
             return (
               <li className="library__row" key={`${songId}#${i}`}>
                 <span className="library__pos">{i + 1}</span>
-                <span className={`library__entry ${title ? '' : 'library__entry--missing'}`}>
-                  {/* A song can be deleted, or a setlist restored before its
-                      charts are. The set still plays; this entry is stepped
-                      over, and importing the chart fills it back in. */}
-                  {title ?? songId}
-                  {title ? null : <span className="library__count">not on this device</span>}
-                </span>
+                {title ? (
+                  <button className="library__open" onClick={() => setPinning(i)}>
+                    {title}
+                    {/* Only when something is pinned: a set that has never
+                        been transposed must not grow a column of noise. */}
+                    {pin && <span className="library__count library__pin">{pin}</span>}
+                  </button>
+                ) : (
+                  <span className="library__entry library__entry--missing">
+                    {/* A song can be deleted, or a setlist restored before its
+                        charts are. The set still plays; this entry is stepped
+                        over, and importing the chart fills it back in. */}
+                    {songId}
+                    <span className="library__count">not on this device</span>
+                  </span>
+                )}
                 <button
                   className="btn"
                   onClick={() => onChange(moveBy(setlist, i, -1))}
@@ -237,7 +317,18 @@ function SetlistEditor({
               </li>
             );
           })}
-        </ol>
+          </ol>
+        </>
+      )}
+
+      {pinning !== null && pinningSong && (
+        <EntryKeys
+          setlist={setlist}
+          index={pinning}
+          song={pinningSong}
+          onChange={onChange}
+          onClose={() => setPinning(null)}
+        />
       )}
 
       <h2 className="library__heading">Add a song</h2>
@@ -246,7 +337,7 @@ function SetlistEditor({
       ) : (
         <ul className="library__list">
           {byTitle(songs).map((song) => {
-            const already = setlist.songs.filter((id) => id === song.id).length;
+            const already = setlist.songs.filter((e) => e.id === song.id).length;
             return (
               <li className="library__row" key={song.id}>
                 {/* The whole row adds, and adding twice is allowed: a reprise
