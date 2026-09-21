@@ -1,43 +1,47 @@
-# LiveChart v2 — Transposition
+# LiveChart v2, Part 1 — Transposition
 
-**Status:** requirements and plan. Nothing here is built. Written 2026-09-05,
-against the deployed Phase 5 codebase.
+**Status:** requirements and plan, **ready to build**. Nothing here is built yet.
+First written 2026-09-05, rewritten 2026-09-20 as Part 1 of two.
 
-Transposition was on the *Deferred past v1* list in `STATUS.md`. This document
-turns Matt's model into something buildable: the arithmetic, the rules, the
-places it touches, and the questions still open. It is a working document, not
-player-facing — the player-facing half lands in `docs/lcf-format.md` and
-`docs/using.md` when the code does, per the standing rule that a format change
-updates the guide in the same pass.
+This is the letter-chord half of what began as one "transposition" feature. The
+numbering half — Roman numerals, contributed by Lance Ruby — is **Part 2**, in
+`NUMERALS-PLAN.md`. It was split off on 2026-09-20 because it adds a grammar, a
+token kind and a set of theory rules that transposition does not need, and
+because it is waiting on one answer this part is not. **Part 1 depends on
+nothing in Part 2.** Part 2 depends on two things built here: the spelled-note
+core (§7) and the key picker (§4).
 
-### Settled so far
+This is a working document, not player-facing. The player-facing half lands in
+`docs/lcf-format.md` and `docs/using.md` when the code does, per the standing
+rule that a format change updates the guide in the same pass.
 
-Confirmed by Matt, 2026-09-05:
+### Settled
 
-- **The `Key − Capo` model** of §1, including the correction in §5.1. Nashville
-  charts are almost never written capo'd, so that path is a corner case — but it
-  is to be handled correctly rather than assumed away.
-- **Slash basses number like roots** (§5.5): `1/3`, and `1/b3` reads as the 1
-  chord with a flat third in the bass.
-- **Numbers not moving with the key is the point, not a defect** (§5.6). A
-  player reading numbers is transposing in their head by design. The Key and
-  Capo controls stay live in Numbers view.
+Every decision below is Matt's, and none is to be reopened without him.
 
-Still open: §9, and **question 2 sets the token model** — decide it first.
+| Date | Decision |
+|---|---|
+| 2026-09-05 | **The chart draws `Key − Capo`.** `Key:` is the sounding key, `Capo:` the fret; the chords in a file are written in `Key − Capo` (§1) |
+| 2026-09-05 | **Key and Capo are adjustable in two places**: temporarily from the toolbar, and pinned on a setlist entry (§3) |
+| 2026-09-20 | **Keys take flats, except F♯ and C♯.** `C C♯ D E♭ E F F♯ G A♭ A B♭ B`. The picker also offers G♭ and D♭. A key the app derives through a capo uses F♯ and C♯ (§2) |
+| 2026-09-20 | **Chords follow the key's signature.** In B♭ the IV is E♭; in E the iii is G♯m (§2) |
+| 2026-09-20 | **Minor keys:** `Cm C♯m Dm E♭m Em Fm F♯m Gm G♯m Am B♭m Bm` (§2) |
+| 2026-09-20 | **C♭, F♭, E♯ and B♯ display as B, E, F and C.** Correct on paper, unwanted on a gig (§2) |
+| 2026-09-20 | **The chord-quality grammar is tightened** to real chord vocabulary. Anything else is a literal and never transposes. A chart that needs an explanation says so in a comment (§6) |
 
 ---
 
 ## Contents
 
 - [1. The model](#1-the-model)
-- [2. Chord spelling](#2-chord-spelling)
+- [2. Spelling](#2-spelling)
 - [3. Where the values come from](#3-where-the-values-come-from)
 - [4. Controls](#4-controls)
-- [5. Nashville numbers](#5-nashville-numbers)
+- [5. Setlist entries](#5-setlist-entries)
 - [6. Format changes](#6-format-changes)
 - [7. Architecture](#7-architecture)
-- [8. What this version does not do](#8-what-this-version-does-not-do)
-- [9. Open questions](#9-open-questions)
+- [8. What Part 1 does not do](#8-what-part-1-does-not-do)
+- [9. Open items](#9-open-items)
 - [10. Build order](#10-build-order)
 - [11. Test plan](#11-test-plan)
 - [12. Traps](#12-traps)
@@ -48,9 +52,8 @@ Still open: §9, and **question 2 sets the token model** — decide it first.
 
 ### 1.1 The one sentence
 
-**The chart draws the shapes your hands make.** Two values decide which shapes:
-`Key` is what the song sounds like, `Capo` is where the capo sits, and the chart
-is drawn in `Key − Capo`.
+**The chart draws the shapes your hands make.** `Key` is what the song sounds
+like, `Capo` is where the capo sits, and the chart is drawn in `Key − Capo`.
 
 ### 1.2 Terms
 
@@ -58,107 +61,143 @@ is drawn in `Key − Capo`.
 |---|---|
 | `fileKey` | The `Key:` attribute. **Defaults to C** when the file says nothing |
 | `fileCapo` | The `Capo:` attribute. Defaults to 0 |
-| `writtenPitch` | The key the chords are literally typed in = `fileKey − fileCapo` |
+| `writtenKey` | The key the chords are literally typed in = `fileKey − fileCapo` |
 | `appKey` | The sounding key now in force. Starts at `fileKey` |
 | `appCapo` | The capo position now in force. Starts at `fileCapo` |
 | `shapeKey` | What gets drawn = `appKey − appCapo` |
-| `delta` | Semitones every chord moves = `shapeKey − writtenPitch`, mod 12 |
-
-All arithmetic is on pitch classes 0–11, C = 0.
+| interval | How far every chord moves: from `writtenKey` to `shapeKey`, **as a spelled interval** — see §2.2 |
 
 ### 1.3 The invariant that matters most
 
-At `appKey = fileKey` and `appCapo = fileCapo`, `delta = 0` — and **a chart at
-delta 0 renders exactly as its file was written**, original spelling and all.
-Opening a song you have not touched can never show you something different from
-the file. This is a hard requirement and the first test to write.
+At `appKey = fileKey` and `appCapo = fileCapo` the interval is a perfect unison —
+and **a chart at unison renders exactly as its file was written**, original
+spelling and all, C♭ included. Opening a song you have not touched can never
+show you anything different from the file. This is a hard requirement and the
+first test to write.
 
 ### 1.4 Validated against a real chart
 
-`That Funny Feeling` carries `Key: E`, `Capo: 2nd fret`, and its chord lines are
-written `D/A`, `G`, `Em`, `A`, `Bm` — D-shapes. `E − 2 = D`. The convention
+`That Funny Feeling` carries `Key: E` and `Capo: 2nd fret`, and its chord lines
+are written `D/A`, `G`, `Em`, `A`, `Bm` — D-shapes. `E − 2 = D`. The convention
 already in the library matches the rule exactly, so no existing chart needs
-editing.
+editing. *(Quoting a handful of chord symbols is fine under the published-content
+policy — Matt's call, 2026-09-05, recorded in `STATUS.md`.)*
 
 ### 1.5 Worked examples
 
-Using that file: `fileKey` E, `fileCapo` 2, `writtenPitch` D.
+Using that file: `fileKey` E, `fileCapo` 2, `writtenKey` D.
 
-| appKey | appCapo | shapeKey | delta | `D/A` | `G` | `Em` | What it means |
-|---|---|---|---|---|---|---|---|
-| E | 2 | D | 0 | `D/A` | `G` | `Em` | Untouched — the file as written |
-| E | 0 | E | +2 | `E/B` | `A` | `F#m` | Same sounding key, capo off, harder shapes |
-| D | 0 | D | 0 | `D/A` | `G` | `Em` | Same shapes, now sounding a tone lower |
-| G | 5 | D | 0 | `D/A` | `G` | `Em` | Same shapes, capo up to sound in G |
-| F | 2 | D# | +1 | `D#/A#` | `G#` | `Fm` | Up a semitone for the singer |
-| C | 0 | C | −2 | `C/G` | `F` | `Dm` | Down to C, no capo |
+| appKey | appCapo | shapeKey | `D/A` | `G` | `Em` | What it shows |
+|---|---|---|---|---|---|---|
+| E | 2 | D | `D/A` | `G` | `Em` | Untouched — the file as written |
+| E | 0 | E | `E/B` | `A` | `F#m` | Same sounding key, capo off, harder shapes |
+| D | 0 | D | `D/A` | `G` | `Em` | Same shapes, sounding a tone lower |
+| G | 5 | D | `D/A` | `G` | `Em` | Same shapes, capo up to sound in G |
+| F | 2 | **E♭** | `Eb/Bb` | `Ab` | `Fm` | A capo-derived key on a black note — flat, per the table |
+| B♭ | 0 | B♭ | `Bb/F` | `Eb` | `Cm` | Chords follow a flat key: E♭, not D♯ |
+| F♯ | 0 | F♯ | `F#/C#` | `B` | `G#m` | Chords follow a sharp key: G♯m, not A♭m |
+| G♭ | 0 | G♭ | `Gb/Db` | **`B`** | `Abm` | The IV of G♭ is C♭ on paper, displayed as B |
 
-Note rows 1, 3 and 4: three different sounding keys, one identical page. That is
-the model working — `Capo` and `Key` move the chart in opposite directions and
-cancel.
+Rows 1, 3 and 4: three sounding keys, one identical page. `Capo` and `Key` move
+the chart in opposite directions and cancel. Rows 7 and 8: the same pitches,
+spelled two ways, because the key you picked says which.
 
 ### 1.6 Requirements
 
-- **R1.1** The chart displays every chord token transposed by `delta`.
-- **R1.2** `delta = 0` renders the source text verbatim.
-- **R1.3** Only `chord` tokens move. `R`, `N.C.`, `%` and unrecognised literals
-  are untouched — `tacet` must never become `uacfu`.
-- **R1.4** A chord's quality string is carried verbatim. `Bbmaj9#11` up 2 is
-  `Cmaj9#11`; the `#11` inside the quality is text, not a pitch.
-- **R1.5** Slash bass notes transpose by the same `delta` as the root.
-- **R1.6** `appCapo` ranges 0–11. Above 11 is the same shapes an octave up, and
-  no guitar has the frets to make it mean anything different.
+- **R1.1** Every chord token is displayed moved by the interval.
+- **R1.2** At unison the source text renders verbatim.
+- **R1.3** Only `chord` tokens move. `R`, `N.C.`, `%` and literals are untouched.
+  §6's grammar is what guarantees a word like `Drums` is a literal.
+- **R1.4** A chord's quality is carried verbatim. `Bbmaj9#11` up a tone is
+  `Cmaj9#11`; the `#11` is part of the quality, not a pitch.
+- **R1.5** Slash bass notes move by the same interval as the root.
+- **R1.6** `appCapo` ranges 0–11.
 - **R1.7** An unparseable `Key:` value is a warning, not an error. The song still
   renders, treated as C. Never fail a chart on stage over a header line.
-- **R1.8** Mode (major/minor) rides along with the key but is never chosen by the
-  transposer — a semitone shift preserves mode automatically. `Bbm` up 2 is `Cm`.
+- **R1.8** Mode rides along with the key and is never chosen by the transposer.
+  A song in `Bbm` moved up a tone is in `Cm`.
 
 ---
 
-## 2. Chord spelling
+## 2. Spelling
 
-**Matt's call: sharps.** When the app generates a name that lands on a black
-note, it writes `C# D# F# G# A#`, never `Db Eb Gb Ab Bb`.
+### 2.1 Key names
 
-- **R2.1** Generated roots and bass notes use sharp names.
-- **R2.2** This applies **only when `delta ≠ 0`**. A file that writes `Bb` and
-  has not been transposed still shows `Bb`. R1.2 outranks this rule.
-- **R2.3** Enharmonic input is read correctly regardless: `Db` in a file parses
-  as pitch 1 and transposes correctly; it just comes back out as a sharp.
+The name a key gets, whenever the app has to name one:
 
-**The accepted cost.** Transposing into flat-side keys produces names a reader
-would conventionally see flat: in F major, a borrowed ♭III will read `G#` where
-`Ab` is what the eye expects. This is a real but minor legibility tax, and the
-escape hatch — a per-song *prefer flats* toggle — is deliberately deferred rather
-than designed out. See open question 1 for the key *label*, which is a separate
-and slightly awkward case.
+| Pitch | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Major** | C | **C♯** | D | E♭ | E | F | **F♯** | G | A♭ | A | B♭ | B |
+| **Minor** | Cm | C♯m | Dm | E♭m | Em | Fm | F♯m | Gm | G♯m | Am | B♭m | Bm |
+
+The minor row is not the major row with an `m` on it. Four entries differ,
+each to the name with fewer accidentals: **C♯m** not D♭m, **G♯m** not A♭m,
+**B♭m** not A♯m, and **E♭m** — where D♯m is equally heavy — to match E♭ major.
+
+- **R2.1** The picker offers these, **plus G♭ and D♭** for major songs. Those two
+  are real, commonly used keys with a real alternative spelling, so the choice is
+  the player's. A minor song gets the twelve minor names.
+- **R2.2** A key **you pick** keeps the spelling you picked. G♭ stays G♭.
+- **R2.3** A key **the app derives** — a shape key worked out through a capo, or
+  a written key worked out from `Key:` and `Capo:` — takes its name from the
+  table. So the capo-derived F♯ and C♯ of Matt's rule are simply what the table
+  says.
+- **R2.4** *Exception to R2.3:* a written key derived through a capo, landing on
+  C♯/D♭, F♯/G♭ or E♭m/D♯m, is **spelled the way the file's own chords are**
+  (flats outnumbering sharps means the flat name). Otherwise the interval in
+  §2.2 is measured from the wrong starting letter. Rare — it needs a capo'd
+  chart written in G♭ or D♭ shapes — but the fallback in R2.7 is what catches it
+  if it is ever wrong.
+
+### 2.2 Chords follow the key
+
+**Transposition moves notes by a spelled interval, not by a count of semitones.**
+Going from G to B♭ is "up a minor third" — two letters, three semitones — so
+every note moves up two letters and three semitones: C → E♭, F♯ → A, D → F.
+The spelling of the target key carries through to every chord in it, with no
+lookup table and no special cases.
+
+- **R2.5** Every root and bass note moves by the interval from `writtenKey` to
+  `shapeKey`, letter and pitch both.
+- **R2.6** Choosing the other spelling of the same key — G♭ on a chart written in
+  F♯ — is a diminished second, which respells every chord: F♯ → G♭, C♯ → D♭,
+  B → C♭ → B (R2.8). It falls out of R2.5; nothing extra is written for it.
+
+### 2.3 Names nobody wants to read
+
+- **R2.7** A double sharp or double flat — which spelled intervals can produce on
+  chromatic chords in distant keys — collapses to the single-accidental name on
+  the key's side: sharps in a sharp key, flats in a flat key, the table's choice
+  in C and Am.
+- **R2.8** **C♭, F♭, E♯ and B♯ display as B, E, F and C.** They turn up on
+  ordinary diatonic chords — the IV of G♭, the ♭VI of E♭m, the vii of F♯, the
+  vii of C♯ — so this is not a corner case.
+- **R2.9** R2.7 and R2.8 apply only to notes the app generated. At unison, R1.2
+  wins: a file that writes C♭ shows C♭.
 
 ---
 
 ## 3. Where the values come from
 
-Exactly the shape of the existing `Lyrics:` precedence, which is already proven
-and already understood.
+The shape of the existing `Lyrics:` precedence, which is proven and understood.
 
-**Precedence, applied to `Key` and `Capo` independently:**
+**Applied to Key and Capo independently:**
 
 1. **Toolbar override** — set while this song is up. Wins everything. Cleared
    when the song changes, exactly like `lyricsOverride`.
-2. **Setlist entry** — if a set is playing and the current position's entry
-   specifies a value.
+2. **Setlist entry** — if a set is playing and this position's entry pins a value.
 3. **The file** — `Key:` and `Capo:`, defaulting to C and 0.
 
 - **R3.1** Changing key or capo from the toolbar is temporary. Reopening the song
   returns to the setlist value, or the file's.
-- **R3.2** A setlist entry may carry its own `key` and `capo`. Each time that
-  song is reached from that set, those values are in force.
+- **R3.2** A setlist entry may pin a key and a capo. Each time that song is
+  reached from that set, those values are in force.
 - **R3.3** Entries are per **position**, not per song id. The same song twice in
-  one night can sit at two different keys — which is what the existing
-  "position, never song id" decision was already built for.
-- **R3.4** Off the set (position −1, a song opened by hand while a set is active)
-  the file's values apply. No setlist entry is in scope.
-- **R3.5** Key and capo override independently: pinning a capo in a setlist and
-  nudging the key from the toolbar leaves the pinned capo alone.
+  one night can sit in two keys — which the existing "position, never song id"
+  decision was already built for.
+- **R3.4** Off the set (position −1) the file's values apply.
+- **R3.5** Key and capo override independently. Nudging the key from the toolbar
+  leaves a capo pinned by the setlist alone.
 
 ---
 
@@ -166,409 +205,253 @@ and already understood.
 
 ### 4.1 On the chart
 
-The toolbar already carries nine controls and is the tightest real estate in the
-app. Adding four buttons is not an option.
+The toolbar already carries nine controls and is the tightest space in the app.
 
 - **R4.1** One **Key** button in the toolbar, reading the current state
-  compactly — `E`, or `E·2` when a capo is set, or `Nos` in numbers view.
-- **R4.2** It opens a panel over the chart, in the manner of the existing Pedal
-  screen: a grid of the twelve roots plus **Numbers**, a capo stepper
-  (− / value / +), and **Reset to file**.
+  compactly — `E`, or `E·2` when a capo is set.
+- **R4.2** It opens a panel over the chart, in the manner of the Pedal screen: a
+  grid of keys per §2.1, a capo stepper (− / value / +), and **Reset to file**.
 - **R4.3** The panel is a deliberate stop, not a mid-song action. It holds the
-  chrome open while it is up, as `PedalLearn` already does.
-- **R4.4** The `Key`/`Capo` readout in the chart header is a second tap target
-  for the same panel.
-- **R4.5** The chart header shows the values in force: `Key A · Capo 2`, plus the
-  shape key when the capo is not 0, e.g. `· in G`.
-- **R4.6** When `delta ≠ 0` the chart is visibly marked as transposed. A chart
-  that has silently moved and looks ordinary is the worst possible failure on
-  stage.
+  chrome open while it is up, as `PedalLearn` does.
+- **R4.4** The key and capo in the chart header are a second way into the panel.
+- **R4.5** The chart header shows the values in force — `Key A · Capo 2` — plus
+  the shape key when the capo is not 0: `· G shapes`.
+- **R4.6** When the chart is not at unison it is **visibly marked as
+  transposed**. A chart that has moved and looks ordinary is the worst possible
+  failure on stage.
+- **R4.7** The picker is built to take a thirteenth entry. Part 2 adds
+  **Numerals** there.
 
 ### 4.2 On a setlist
 
-- **R4.7** Each song row in a setlist can be given a key and a capo, from the
-  same panel, without opening the chart.
-- **R4.8** A row shows its pinned values when it has them, and shows nothing when
-  it does not — a set that has never been transposed must not grow a column of
-  noise.
+- **R4.8** Each row in a setlist can pin a key and a capo, from the same panel,
+  without opening the chart.
+- **R4.9** A row shows its pinned values when it has them and nothing when it
+  does not. A set that has never been transposed must not grow a column of noise.
 
 ---
 
-## 5. Nashville numbers
+## 5. Setlist entries
 
-### 5.1 The correction that has to be made first
-
-Matt's rule reads: *"selecting to transpose it to Numbers converts it with the 1
-being the root chord of the default key defined in the LCF file."*
-
-**Taken literally that produces nonsense on any chart with a capo.** On
-`That Funny Feeling` the `Key:` is E, but the page is written in D. Numbering
-D-shapes against a tonic of E gives `D/A → b7/4`, `Em → 1m`, `G → b3` — a chart
-in ♭7 that no one can read.
-
-**The rule has to be:** *1 is the root of the key the chords on the page are
-written in* — that is `shapeKey`, or `Key − Capo`. On a song with no capo the two
-are identical, which is why the distinction is easy to miss.
-
-- **R5.1** `degree = pitch(token) − pitch(shapeKey)`, mod 12.
-
-**Confirmed 2026-09-05.** Matt's note: a Nashville chart is almost never written
-with a capo as well, because there is little point — so this is a corner case
-rather than a common path. It is still to be handled correctly, which is exactly
-why the test below uses a synthetic capo fixture. A rule that is right only on
-the charts you happen to own is not a rule.
-
-There is a pleasant consequence. **Numbers are invariant under transposition**:
-numbering D-shapes against D gives the same page as numbering the sounding
-E-chords against E. So the question "relative to the file's key or the current
-one?" has no observable answer — both give the same chart. One less decision.
-
-### 5.2 The degree table
-
-Twelve semitones, one spelling each:
-
-| Semitones | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Degree** | 1 | b2 | 2 | b3 | 3 | 4 | b5 | 5 | b6 | 6 | b7 | 7 |
-
-- **R5.2** Number accidentals are **flats**, not sharps. The sharps rule of §2 is
-  about letter names. `b3` is how a minor third reads; `#2` is not a thing. These
-  two rules disagreeing is correct, not an oversight.
-- **R5.3** Accidentals go **before** the number — `b7`, `b3` — mirroring how they
-  are written and read, and unlike letter names where they follow.
-
-### 5.3 Minor keys
-
-Matt's rule — "the root of the selected key becomes the 1 chord" — is taken
-literally and applies to minor keys too.
-
-- **R5.4** In a minor key the tonic is `1`. A song in Am numbers as `Am → 1m`,
-  `C → b3`, `Dm → 4m`, `F → b6`, `G → b7`, `E → 5`.
-
-This is *tonic-relative* numbering. Some players number minor songs from the
-relative major instead (`Am → 6m`, `C → 1`). Matt's rule is the first; open
-question 3 confirms it, because a chart numbered under the wrong convention is
-useless and the fix is a one-line constant.
-
-### 5.4 Qualities
-
-**This is open question 2, and it sets the token model.** Two readings of a bare
-number, and they are not compatible.
-
-**Implied — standard Nashville.** A bare number takes the diatonic quality of the
-key: in C, `6` is Am, `2` is Dm, `4` is F. Deviations are marked explicitly. This
-is what a Nashville player expects and what they will type.
-
-**Explicit — a departure.** A bare number is always a major triad; `Em` in G is
-written `6m`. Nothing is ever inferred.
-
-**Recommended: a hybrid, which gets most of both.**
-
-- **R5.5** *(reading)* A bare number is **expanded diatonically from the key**,
-  per standard convention. A chart typed by anyone who knows Nashville reads
-  correctly with no re-learning.
-- **R5.6** *(writing)* When the app generates numbers from letters it always
-  emits the quality **explicitly** — `6m`, not `6`. What the app produces can
-  then never be misread, and does not depend on the key attribute being right.
-- **R5.7** Letters → numbers carries the quality verbatim: `F#m7b5` in G becomes
-  `7m7b5`.
-
-The hybrid costs nothing on input and removes the round-trip hazard on output.
-The one place it does not save us is minor keys — see below, and question 2.
-
-**Why implied has teeth.** Diatonic expansion needs the key *and the mode*, which
-makes two things load-bearing that were previously decorative:
-
-- A `Key: N` chart with no tonic declared (question 7) **cannot expand a bare
-  number at all**. This is the strongest argument for `Notation: numbers`
-  alongside a real key.
-- **Minor keys are genuinely ambiguous.** Natural minor makes `5` a minor chord,
-  but minor-key songs use a major V constantly. A player typing `5` in a minor
-  song almost certainly means the major one, and natural-minor expansion would
-  silently hand them the wrong chord — the exact failure mode this format tries
-  to design out.
-
-### 5.5 Slash basses as numbers
-
-Matt flagged this as the part he was least sure of. It holds up, and is
-**confirmed 2026-09-05**.
-
-- **R5.8** A bass note is numbered by the same table: in D, `D/F#` is `1/3`.
-- **R5.9** Non-diatonic basses need the accidental: in D, `D/F` is `1/b3` — read
-  as the 1 chord with a flat third in the bass. The grammar must accept it.
-
-This is also what real Nashville charts do, so it is convention rather than
-invention. The one genuine wrinkle is grammatical, not musical — see §6.2.
-
-### 5.6 In the app
-
-- **R5.10** **Numbers** sits as a thirteenth entry in the key picker.
-- **R5.11** Switching to Numbers and back to the original key returns the
-  original page exactly. Notation is a view, never a mutation.
-- **R5.12** In Numbers view the header reads `Numbers · 1 = D`, so you can see
-  what to count from without leaving the chart.
-
-**Numbers do not move with the key — and that is the point.** Because numbers are
-invariant (§5.1), changing Key or Capo in Numbers view leaves the chart alone.
-
-Raised as a possible confusion and **closed by Matt, 2026-09-05**: anyone reading
-numbers understands that not moving is the whole reason the system exists, and a
-player displaying numbers on stage is transposing in their head on the fly. That
-is a legitimate use even though it is not how Matt expects to use it himself.
-
-- **R5.13** The Key and Capo controls stay live in Numbers view. They set what
-  you land in when you leave it, and the `1 = D` readout of R5.12 is what shows
-  the change took.
-
----
-
-## 6. Format changes
-
-`docs/lcf-format.md` is the format definition and updates in the same pass.
-
-### 6.1 Header
-
-- **R6.1** `Key:` gains a defined default of **C** when absent. Today it is
-  simply undefined and displayed only if present.
-- **R6.2** `Key:` values are parsed rather than kept as free text: root, optional
-  accidental, optional minor marker (`m`, `min`, `minor`).
-- **R6.3** `Key: N` — also spelled `Numbers` or `Nashville`, matched without
-  case — declares a chart written in degrees.
-- **R6.4** *(proposed, see open question 7)* `Notation: numbers` alongside a
-  normal `Key: D`, meaning "written in numbers, and 1 is D". Strictly more useful
-  than `Key: N` alone, because such a chart then has a sounding key, a working
-  capo, and a defined conversion to letters. `Key: N` stays valid and means
-  numbers with no tonic declared.
-
-### 6.2 Degree tokens
-
-A degree token mirrors the chord grammar with the accidental moved to the front:
-
-```
-^(#|b)?([1-7])([^/\s]*)(?:\/(#|b)?([1-7]))?$
-```
-
-Against the existing chord grammar:
-
-```
-^([A-G])(#|b)?([^/\s]*)(?:\/([A-G])(#|b)?)?$
-```
-
-- **R6.5** The two grammars cannot collide. A token starts with `A`–`G`, or with
-  `1`–`7` or an accidental followed by a digit. Nothing satisfies both.
-- **R6.6** `b` before a digit is a flat; `B` is a note. Case decides, and the
-  format is already case-sensitive inside bars.
-- **R6.7** `%`, `R` and `N.C.` are unaffected in either notation.
-
-**Compatibility note.** Today `|4 |` renders as a dimmed literal. Under the new
-grammar it would parse as a degree. The risk is negligible — nobody types a bare
-digit in a bar meaning text — but it is a silent change to an existing chart's
-rendering, so it is called out rather than slipped in. See open question 4.
-
----
-
-## 7. Architecture
-
-The token model already does most of the work. `ChordToken` separates
-`root` / `accidental` / `quality` / `bass` / `bassAccidental`, so transposition
-touches four fields and never parses a chord name twice. **No parser change is
-needed for letter transposition at all** — only for degrees.
-
-### 7.1 New module
-
-`src/music/` — pure, no React, fully unit-testable:
-
-| Function | Does |
-|---|---|
-| `parseKey(raw)` | `"Bbm"` → `{ pc: 10, minor: true }`, or null |
-| `keyName(pc, minor)` | Pitch class → display name, sharps per §2 |
-| `pitchOf(root, accidental)` | Letter + accidental → 0–11 |
-| `transposeToken(token, delta)` | Letter token → letter token |
-| `toDegrees(token, tonicPc)` | Letter → degree |
-| `toLetters(token, tonicPc)` | Degree → letter |
-| `viewSong(song, view)` | The whole song under `{ key, capo, notation }` |
-
-`view` is derived from the precedence chain in §3 and is the only thing the
-render tree sees. `ChartView` receives an already-resolved `Song`, so `BarCell`
-changes only to place a degree's accidental before its number.
-
-### 7.2 Wiring
-
-`App.tsx` already does `useMemo(() => parseLcf(current.text), [current?.text])`.
-A second memo resolves the view. One extra derivation, no new data flow.
-
-### 7.3 The structural change: setlist entries
-
-This is the largest and least interesting piece of work.
+The largest and least interesting piece of work.
 
 ```ts
 // today
 songs: string[]
 // proposed
-songs: SetEntry[]        // { id: string; key?: string; capo?: number }
+songs: SetEntry[]      // { id: string; key?: string; capo?: number }
 ```
+
+`key` holds the spelled root only (`"Gb"`, `"Eb"`). Mode comes from the file, so
+pinning a key on a minor song never has to know it is minor.
 
 Touches `setlists.ts` (`addToSetlist`, `removeAt`, `moveBy`, `stepPosition`,
 `firstPlayable`), `SetlistsView.tsx`, `App.tsx`, `backup.ts`, and the shape
 already sitting in IndexedDB on Matt's iPad.
 
-- **R7.1** Setlists are **normalised on read**, not migrated by a script. A
-  stored `string[]` becomes `[{ id }]` as it is loaded. A migration that runs
-  once and can fail halfway is the wrong risk to take with a running order.
-- **R7.2** `BACKUP_VERSION` goes to **3**. Version 2 bundles restore, their
-  string entries normalised on the way in — the same tolerance version 2 already
-  shows version 1 over its missing `setlists`.
-- **R7.3** `mergeSetlists` is unaffected; it works on `id` and `updatedAt` only.
-
-### 7.4 Layout — checked, and nearly a non-issue
-
-`MIN_BAR_EM = 4` was measured against `Bbmaj9#11` at 3.83em. Sharp names are the
-same two characters as flat names, and degrees are shorter than both, so the
-worst case barely moves. The one case that widens is a **natural root becoming
-sharp** — `Gmaj9#11` → `G#maj9#11`, one character past the measured worst case.
-
-- **R7.4** Re-measure the floor against `G#maj9#11` and `F#m7b5/C#`. Expect a
-  small bump to `MIN_BAR_EM` or nothing at all. Not a redesign.
+- **R5.1** Setlists are **normalised on read**, not migrated. A stored `string[]`
+  becomes `[{ id }]` as it loads. A migration that runs once and can fail halfway
+  is the wrong risk to take with a running order.
+- **R5.2** `BACKUP_VERSION` goes to **3**. Version 2 bundles restore with their
+  entries normalised on the way in, just as version 2 already tolerates version
+  1's missing `setlists`.
+- **R5.3** `mergeSetlists` is unaffected; it works on `id` and `updatedAt`.
+- **R5.4** Reordering, removing and adding keep each entry's pinned values with
+  the entry — they move as one.
 
 ---
 
-## 8. What this version does not do
+## 6. Format changes
+
+`docs/lcf-format.md` is the format definition and changes in the same pass.
+
+### 6.1 The header
+
+- **R6.1** `Key:` defaults to **C** when absent. Today it is undefined, and shown
+  only when present.
+- **R6.2** `Key:` is parsed rather than kept as free text: a root `A`–`G`, an
+  optional `#` or `b`, and an optional minor marker (`m`, `min`, `minor`, or
+  `-`). Anything else is R1.7's warning.
+
+### 6.2 A tighter chord grammar
+
+**The problem.** The chord grammar accepts *anything* after the root as the
+quality, so a capitalised word in a bar is read as a chord today: `Drums` is D
+with quality "rums", and so are `Fill`, `Break`, `Bass`, `Fade`, `Ending`. It is
+harmless now because it renders as typed. **Transposition would make it wrong**
+— up a tone, `Drums` becomes `Erums` — and Part 2's numerals would make it worse,
+since `vamp` and `intro` begin with a numeral.
+
+**The rule.** A quality must be made **entirely** of recognised pieces, in any
+order. Case matters, as it already does in a bar.
+
+| Kind | Pieces |
+|---|---|
+| Minor | `m` `min` `-` |
+| Major | `maj` `Maj` `M` `Δ` |
+| Diminished, half-diminished, augmented | `dim` `°` `o` `ø` `aug` `+` |
+| Suspended, added, altered | `sus` `sus2` `sus4` `add` `alt` |
+| Numbers | `2` `4` `5` `6` `7` `9` `11` `13`, each optionally preceded by `b` `#` `+` `-` |
+| Grouping | parentheses around any of the above, with commas inside |
+
+| Accepted | Rejected — now literals |
+|---|---|
+| `Dm7b5` `Bbmaj9#11` `C7sus4` `Cadd9` `C5` `CmMaj7` `Cm(maj7)` `C7(b9,#11)` `C°7` `Cø7` `C+` `C7alt` `C69` | `Drums` `Fill` `Break` `Bass` `Fade` `Ending` `All` `Cue` |
+
+- **R6.3** A token whose quality does not parse is a **literal**: shown dimmed,
+  as written, and never transposed. Nothing still breaks the chart.
+- **R6.4** `C6/9` remains a literal, as it is today — the `/` means a bass note.
+  Write `C69` or `C6add9`.
+- **R6.5** The docs tell a player who wants a word in a bar to write it in lower
+  case (`stop`, `fill`, `tacet` — the guide's examples already are), or to use a
+  comment.
+
+**Checked against the charts on this machine, 2026-09-20:** every chord token
+in `Format Test`, `Kokomo`, `Let It Be` and `That Funny Feeling` still parses,
+and the only word — `stop` — was already a literal. **Nothing changes.** Matt's
+iPad library is larger, so step 6a includes checking it (§10).
+
+---
+
+## 7. Architecture
+
+The token model already does most of the work. `ChordToken` separates `root`,
+`accidental`, `quality`, `bass` and `bassAccidental`, so moving a chord touches
+four fields and never re-parses a name.
+
+### 7.1 A new module: `src/music/`
+
+Pure, no React, fully unit-testable. **Notes are spelled** — a letter and an
+accidental — never bare semitone numbers, because §2 cannot be done otherwise.
+
+| Function | Does |
+|---|---|
+| `parseKey(raw)` | `"Bbm"` → `{ letter: 'B', alter: -1, minor: true }`, or null |
+| `keyName(pitch, minor)` | The §2.1 table, for keys the app has to name |
+| `interval(from, to)` | Two spelled notes → `{ letters, semitones }` |
+| `moveNote(note, interval, key)` | Applies an interval, then R2.7 and R2.8 |
+| `transposeToken(token, interval, key)` | A chord token, root and bass |
+| `viewSong(song, view)` | The whole song under `{ key, capo }` |
+
+This is also the core Part 2 builds on: numerals convert to and from letters
+through the same spelled notes and intervals.
+
+### 7.2 Wiring
+
+`App.tsx` already does `useMemo(() => parseLcf(current.text), [current?.text])`.
+A second memo resolves the view from §3's precedence. `ChartView` receives an
+already-transposed `Song` and does not know transposition exists.
+
+### 7.3 Layout
+
+`MIN_BAR_EM = 4` was measured against `Bbmaj9#11` at 3.83em. A natural root that
+becomes a sharp or flat gains a character — `Gmaj9#11` → `G#maj9#11` — which is
+past the measured worst case.
+
+- **R7.1** Re-measure the floor against `G#maj9#11` and `F#m7b5/C#`. Expect a
+  small bump to `MIN_BAR_EM`, or nothing.
+
+---
+
+## 8. What Part 1 does not do
 
 Named so they are decisions rather than omissions:
 
-- **No writing back to the `.lcf`.** The file stays the song of record. Export is
-  unchanged and always writes the original. *(Export-transposed is a plausible
-  follow-on.)*
-- **No capo calculator** — nothing suggests "capo 3 puts you in easy shapes".
-- **No hands-free transposition.** No pedal binding, no tap zone. Changing key is
-  a deliberate stop.
-- **No flats**, beyond what a file already contains.
-- **No per-song sticky key** outside a setlist. Matt's call: toolbar changes are
-  temporary, exactly like Lyrics.
-- **No chord diagrams, no instrument transposition** (Bb/Eb horns), **no audio**.
+- **Numerals.** Part 2, `NUMERALS-PLAN.md`.
+- **No writing back to the `.lcf`.** The file stays the song of record; export
+  always writes the original. *(Export-transposed is a plausible follow-on.)*
+- **No capo calculator** suggesting where the capo gives easy shapes.
+- **No hands-free transposition** — no pedal binding, no tap zone.
+- **No sticky per-song key** outside a setlist. Toolbar changes are temporary,
+  exactly like Lyrics.
+- **No change to how chord qualities display.** `Cdim` still reads `Cdim`. The
+  symbol rendering Matt settled for numerals (`°`, `ø`) is Part 2's.
+- **No chord diagrams, no instrument transposition, no audio.**
 
 ---
 
-## 9. Open questions
+## 9. Open items
 
-Ordered by how much rework the answer costs.
+None blocks starting. Each has a default that holds unless Matt says otherwise.
 
-1. **Key labels on black notes.** Chords will read `D#`. Should the *key* read
-   `D#` too, or `Eb`, which is what a key is conventionally called?
-   *Recommendation: the picker shows both (`D♯/E♭`) so it is unambiguous; the
-   header shows the sharp, so the label matches the chords underneath it.*
-
-2. **Does a bare number imply its diatonic quality?** *(Decide first — it sets
-   the token model, and questions 3 and 7 hang off it.)* §5.4 lays out both
-   readings and recommends the hybrid: **implied on the way in** (standard
-   Nashville, so `6` in C is Am), **explicit on the way out** (the app writes
-   `6m`, never a bare `6`). Two sub-questions follow if implied wins:
-
-   - **Minor keys.** Natural minor makes `5` minor, but minor-key songs use a
-     major V constantly. Does a bare `5` in a minor key expand to major — the
-     practical reading — or minor, the theoretical one? *Recommendation: major,
-     because that is what the player meant, and a silent minor V is the worse
-     failure.*
-   - **`7`.** Diatonically a diminished triad, and almost never what is played.
-     *Recommendation: expand as a plain major and let the file mark `7dim`
-     explicitly, rather than handing back a chord nobody asked for.*
-
-3. **Minor-key numbering.** Confirm `Am → 1m` (tonic-relative, §5.3) rather than
-   `Am → 6m` (relative-major). Both are in use. One constant either way — but if
-   question 2 lands on implied, this also decides which scale the expansion
-   table is built from.
-
-4. **A bare `1`–`7` in a letter chart** — a degree, or a dimmed literal as today?
-   *Recommendation: a degree, for one grammar rather than two, accepting the
-   silent change to any chart that has a bare digit in a bar.*
-
-5. **Seeing the key after the header scrolls away.** The chart header carries the
-   key, but section headers are what stay sticky. Mid-song, is "what key am I
-   in?" answerable? *Recommendation: only when `delta ≠ 0`, ride a small key
-   marker in the sticky header. Nothing at all when untransposed — a chart in its
-   own key needs no label.*
-
-6. **"Save this to the setlist"** from the chart's key panel, when the song is
-   playing from a set — or keep the two places strictly separate as Matt
-   described them?
-
-7. **`Notation: numbers` alongside a real key** (R6.4), so a number chart has a
-   tonic, a working capo, and a defined conversion to letters. **Question 2
-   raises the stakes on this one:** if a bare number expands diatonically, a
-   `Key: N` chart with no tonic cannot be converted to letters at all.
+1. **Showing the key after the header scrolls away.** The chart header scrolls;
+   section headers stick. *Default: when transposed, a small key marker rides in
+   the sticky header. Nothing when untransposed — a chart in its own key needs
+   no label.* Decide during 6c, on the iPad.
+2. **"Save to setlist" from the chart's key panel**, when the song is playing
+   from a set. *Default: not built. Matt described the two places as separate,
+   and it is easy to add later.*
+3. **D♯m in the minor picker**, alongside E♭m, by analogy with G♭ and D♭.
+   *Default: no — E♭m only, per the 2026-09-20 decision.*
+4. **The full library check** for §6.2. **Needs Matt:** export a backup bundle
+   from the iPad to this machine before 6a ships, so every real chart can be run
+   through the new grammar and any token that changes class reviewed together.
 
 ---
 
 ## 10. Build order
 
-Sized to be independently testable and independently shippable. Each phase ends
-green with `tsc --noEmit` and the full suite.
+Each step ends green on `tsc --noEmit` and the full suite, and is shippable on
+its own.
 
 | Phase | Work | Why here |
 |---|---|---|
-| **6a** | `src/music/`, pure. Key parsing, pitch maths, letter transposition, degree conversion both ways. Tests only, no UI | The whole feature's correctness lives here and needs no React to prove |
-| **6b** | Key/Capo in the app: the panel, the toolbar button, the header readout, precedence over the file's values | Usable on its own — Matt can transpose a chart before the setlist plumbing exists |
-| **6c** | Nashville: grammar, `Key: N`, both conversions, a `Numbers Test.lcf` fixture, `docs/lcf-format.md` | Settles the token model before the setlist work is built on top of it |
-| **6d** | Setlist entries: `SetEntry`, read-time normalisation, backup v3, the touched call sites | Mechanical, riskiest to storage, and nothing else depends on it |
-| **6e** | Guide (`lcf-format.md`, `using.md`), deploy, iPad with the pedal | The standing rule, and the only test that counts |
-
-6c and 6d are swappable if pinned keys turn out to matter more than numbers.
+| **6a** | **The tighter grammar** (§6.2). Parser, tests, `docs/lcf-format.md`, and the library check of §9 item 4 | Stands alone as a fix; must land before anything moves a chord, or `Drums` transposes |
+| **6b** | **`src/music/`**, pure: keys, spelled notes, intervals, R2.7/R2.8, token transposition. Tests only, no UI | The feature's correctness lives here, and it needs no React to prove |
+| **6c** | **Key and Capo in the app**: the panel, toolbar button, header readout, transposed marker, toolbar-over-file precedence | Usable on its own — a chart can be transposed before setlists know anything about it |
+| **6d** | **Setlist entries**: `SetEntry`, normalise-on-read, backup v3, the panel on setlist rows | Mechanical, riskiest to stored data, and nothing else depends on it |
+| **6e** | **Guide** (`lcf-format.md`, `using.md`), deploy, iPad with the pedal | The standing rule, and the only test that counts |
 
 ---
 
 ## 11. Test plan
 
-The feature is unusually testable — it is pitch arithmetic behind a pure
-function. Rough shape, ~40 new tests:
+Pitch arithmetic behind pure functions — unusually testable. Roughly 50 tests.
 
-**Correctness**
+**The invariant**
+- At unison, every source token renders verbatim — over `Format Test` and a
+  generated chart covering all twelve roots in both spellings, and a file's own
+  C♭. *(R1.2 — write this one first.)*
 
-- `delta = 0` reproduces every source token verbatim, over `Format Test` and a
-  generated chart covering all twelve roots. *(R1.2 — write this one first.)*
-- Transpose by `n` then `−n` returns the original pitches.
-- All 12 keys × 12 capos over `Format Test`: no throw, every root valid.
-- Qualities, including `maj9#11`, survive untouched (R1.4).
-- `R`, `N.C.`, `%` and literals are never altered (R1.3).
-- Slash basses move with their roots (R1.5).
+**The model**
+- The §1.5 table, row for row.
+- Up an interval then back down returns the original spelling, not just pitch.
+- All 14 picker keys × 12 capos over `Format Test`: no throw, every note valid.
+- Qualities, including `maj9#11`, untouched (R1.4). Slash basses move (R1.5).
+- `R`, `N.C.`, `%` and literals never altered (R1.3).
 
 **Spelling**
+- G → B♭: `C` becomes `Eb`, `F#` becomes `A` (R2.5).
+- The iii in E is `G#m`; the IV in B♭ is `Eb`.
+- F♯ chart shown in G♭ respells every chord (R2.6).
+- IV of G♭ and ♭VI of E♭m display `B` (R2.8); no double accidental ever appears
+  (R2.7).
+- A capo-derived shape key on pitch 6 is F♯, on pitch 1 C♯, on minor pitch 3 E♭m
+  (R2.3).
 
-- Every generated black note is the sharp (R2.1).
-- A file's own `Bb` survives at delta 0 (R2.2).
-
-**Numbers**
-
-- Letters → numbers → letters, same key, is identity in pitch.
-- The full chromatic degree table (R5.2).
-- `Key: E` + `Capo: 2` numbers against **D**, not E — the §5.1 correction, and
-  the test that would have caught it.
-- Minor tonic numbering (R5.4).
-- Degree grammar: `b7`, `#4`, `1/3`, `1/b3`, `2m7`; and that `B` is still a note.
+**Grammar**
+- Every entry in both columns of §6.2's table.
+- `Drums` is a literal and does not move when the chart is transposed.
+- `C6/9` stays a literal.
 
 **Storage**
-
-- A version 2 backup restores with entries normalised (R7.2).
-- A stored `string[]` setlist reads back as entries (R7.1).
-- Reorder, remove and add all preserve each entry's pinned key.
+- A version 2 backup restores with entries normalised (R5.2).
+- A stored `string[]` setlist reads back as entries (R5.1).
+- Reorder, remove and add keep each entry's pinned values (R5.4).
 
 ---
 
 ## 12. Traps
 
-- **The §5.1 capo/tonic error** is the one real bug hiding in this feature. It is
-  invisible on any song without a capo, and every fixture in the repo has
-  `Capo: 0`. `That Funny Feeling` — capo 2 — is the chart that catches it, and it
-  is gitignored, so **write the test with a synthetic capo fixture** rather than
-  relying on the one file that would have shown it.
-- **Setlists on the iPad are real data.** Matt has running orders stored. The
-  normalise-on-read rule (R7.1) exists so a shape change cannot eat them.
-- **The delta-0 invariant is load-bearing.** Every enharmonic argument in §2 is
-  survivable *because* an untouched chart is never rewritten. If that test ever
-  goes red, stop.
+- **The unison invariant is load-bearing.** Every spelling rule in §2 is safe
+  *because* an untouched chart is never rewritten. If that test goes red, stop.
+- **6a changes how existing charts render.** Checked here and harmless, but the
+  iPad library has not been checked. Do not ship 6a before §9 item 4.
+- **Setlists on the iPad are real data.** R5.1 exists so a shape change cannot
+  eat a running order.
+- **Semitone arithmetic is the tempting wrong shortcut.** It is simpler and gets
+  every pitch right, and every flat key wrong. §2 needs letters.
 - **Force-quit and relaunch after deploying.** There is deliberately no
-  `skipWaiting`; a resumed app is the old build. This has already cost one
-  session.
+  `skipWaiting`; a resumed app is the old build.
 - **A service worker or guide change is only tested against the built site**, via
   `livechart-built` in `.claude/launch.json`.
-- **Do not print chart content into docs or commits.** The published-content
-  policy covers this file too — §1.4 names chords and a key, and no lyrics.

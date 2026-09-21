@@ -1,32 +1,37 @@
 # LiveChart — project status
 
-**Last updated:** 2026-09-05 · **Phases 0–5 complete, deployed and in use** ·
+**Last updated:** 2026-09-20 · **Phases 0–5 complete, deployed and in use** ·
 122 tests locally, 114 in CI ·
 **live at https://matthewsmyrl.github.io/LiveChart/**
 
 ---
 
-## ⏳ Start here — v1 is in use; transposition is in planning
+## ⏳ Start here — transposition is planned and ready to build
 
 **Phase 5 is settled.** Setlists shipped 2026-08-17 (`c1a2f1e`), were verified
 live, and Matt reported on 2026-09-05 that **the app is working well so far** in
 actual use. That closes the pedal-and-setlist question this section carried for
 three weeks. Nothing from that run needs fixing.
 
-**The next work is transposition, and it is being planned before any code is
-written.** See **`TRANSPOSITION-PLAN.md`** — requirements, the arithmetic, the
-architecture, a build order and a test plan. Read it before touching this
-feature; the model is not what you would guess.
+**The next work is transposition, now split in two** (2026-09-20):
 
-**It is not ready to build.** Seven questions are open in §9 of that document,
-and **question 2 sets the token model**, so starting before it is answered means
-rewriting. Matt is consulting a professional who reads Nashville number charts
-for a living, and will come back with answers. **Ask whether those came back
-before starting any of this.**
+- **Part 1 — `TRANSPOSITION-PLAN.md` — is fully decided and ready to build.**
+  Letter chords only: the `Key − Capo` model, key-aware spelling, Key and Capo
+  in the toolbar and on setlist entries, and a tighter chord grammar. Build order
+  is phases **6a–6e** in its §10. Read it before touching this feature; the
+  spelling model is not what you would guess, and semitone arithmetic is the
+  tempting wrong shortcut.
+- **Part 2 — `NUMERALS-PLAN.md` — is decided but not yet planned.** Roman
+  numerals, contributed by **Lance Ruby, who is to be credited in the guide**.
+  It waits on Lance confirming one rule for bass digits. **Ask whether that
+  came back** before writing its plan. Part 1 does not wait for it.
 
-Three things are already confirmed and are not to be reopened: the `Key − Capo`
-model, slash-bass numbering (`1/3`, `1/b3`), and that numbers not moving when
-the key changes is the point of the system rather than a defect.
+**One thing 6a needs from Matt before it ships:** a backup bundle exported from
+the iPad to this machine, so the tighter grammar can be checked against his
+whole library rather than the four charts here. See Part 1, §9 item 4.
+
+Every decision in both documents is Matt's, with dates, and not to be reopened
+without him.
 
 **The real-world import and backup thread is closed** — Matt confirmed
 2026-08-17 that writing `.lcf` files, importing, backing up and updating songs
@@ -644,16 +649,20 @@ a broken page turn and isn't one. Either display the pane, or
 
 ## Next
 
-**Transposition — planned, not started.** `TRANSPOSITION-PLAN.md` is the
-requirements and planning document, written 2026-09-05. In short: the chart
-draws `Key − Capo`, both values are adjustable in the app and pinnable on a
-setlist entry, generated accidentals are sharps, and Nashville numbers become a
-thirteenth option in the key picker. Build order is 6a–6e in §10 of that
-document, starting with a pure `src/music/` module that needs no UI to prove.
+**Transposition, Part 1 — ready to build.** `TRANSPOSITION-PLAN.md`. The chart
+draws `Key − Capo`; both are adjustable from the toolbar and pinnable on a
+setlist entry. Keys take flats except F♯ and C♯, chords follow the key's
+signature, and C♭/F♭/E♯/B♯ display as B/E/F/C. Build order:
 
-**Blocked on §9, question 2** — whether a bare Nashville number implies its
-diatonic quality. It decides the token model, so nothing should be built until
-Matt comes back with an answer. See *Start here*.
+- **6a** — tighter chord grammar, so words like `Drums` stop parsing as chords.
+  Needs the iPad library check first.
+- **6b** — `src/music/`, pure: spelled notes and intervals. Tests only.
+- **6c** — Key and Capo in the app.
+- **6d** — setlist entries, backup v3.
+- **6e** — guide, deploy, iPad.
+
+**Numerals, Part 2 — waiting on Lance Ruby.** `NUMERALS-PLAN.md` records what is
+decided. Builds on 6b and 6c, so it comes after Part 1 regardless.
 
 - **Still deferred** — in-app editor, PDF/OCR import (the source PDF is
   image-only, no text layer), sharing.
