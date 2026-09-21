@@ -1,8 +1,7 @@
 # LiveChart v2, Part 1 — Transposition
 
-**Status:** **6a–6d built 2026-09-21**, with the guide half of 6e; committed,
-not yet deployed. Waiting on the library check (§9 item 4), then the deploy and
-the iPad run. How each requirement was read during the build is in `STATUS.md`,
+**Status:** **6a–6e built and deployed 2026-09-21.** Waiting on the iPad run.
+§9 items 1 and 4 are closed — see below. How each requirement was read during the build is in `STATUS.md`,
 *Transposition — calls made during the build*.
 First written 2026-09-05, rewritten 2026-09-20 as Part 1 of two.
 
@@ -377,7 +376,11 @@ Named so they are decisions rather than omissions:
 
 None blocks starting. Each has a default that holds unless Matt says otherwise.
 
-1. **Showing the key after the header scrolls away.** The chart header scrolls;
+1. **Closed 2026-09-21, Matt: no key in the section headers.** Built first as
+   the default below, and it was noise, repeated on every section. The amber Key
+   button and the header next to the title are the marking. It may return with
+   mid-song key changes, showing the *new* key where it changes.
+   *Original item:* **Showing the key after the header scrolls away.** The chart header scrolls;
    section headers stick. *Default: when transposed, a small key marker rides in
    the sticky header. Nothing when untransposed — a chart in its own key needs
    no label.* Decide during 6c, on the iPad.
@@ -389,8 +392,9 @@ None blocks starting. Each has a default that holds unless Matt says otherwise.
 4. **The full library check** for §6.2. **Needs Matt:** export a backup bundle
    from the iPad to this machine before 6a ships, so every real chart can be run
    through the new grammar and any token that changes class reviewed together.
-   The tool is ready: `node scripts/check-grammar.mjs <bundle.json>`. On the
-   five charts here, including *Louisiana Rain*, it finds nothing that changes.
+   **Closed 2026-09-21, Matt:** every iPad chart was built in `songs/local/`, so
+   the five charts here are the library; nothing changes class. Anything else
+   will surface in use. `node scripts/check-grammar.mjs` remains for later.
 
 ---
 

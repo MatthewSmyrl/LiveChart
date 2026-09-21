@@ -78,14 +78,11 @@ export function SectionView({
   time,
   fit,
   showLyrics,
-  marker,
 }: {
   section: Section;
   time: TimeSignature;
   fit: Fit;
   showLyrics: boolean;
-  /** The key in force, shown only when the chart is transposed. */
-  marker?: string;
 }) {
   return (
     <section className="section" style={{ '--accent': accentFor(section.name) } as React.CSSProperties}>
@@ -93,11 +90,6 @@ export function SectionView({
         <span className="section__name">{section.displayName}</span>
         {section.repeat > 1 && <span className="repeat-badge">×{section.repeat}</span>}
         {section.note && <span className="section__note">{section.note}</span>}
-        {marker && (
-          <span className="section__key" aria-label={`Transposed to ${marker}`}>
-            {marker}
-          </span>
-        )}
       </h2>
       {section.groups.map((g, i) => (
         <GroupView key={i} group={g} time={time} fit={fit} showLyrics={showLyrics} />

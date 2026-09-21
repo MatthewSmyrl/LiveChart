@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Song } from '../lcf/types';
 import { prettyKey } from '../music/notes';
-import { type KeyState, keyBadge } from '../music/transpose';
+import type { KeyState } from '../music/transpose';
 import { SectionView } from './SectionView';
 import { useBarsPerRow } from './useBarsPerRow';
 
@@ -43,9 +43,6 @@ export function ChartView({
   const { ref, barPx, capacity, max } = useBarsPerRow(chordPx, longestLine);
 
   const { appKey, appCapo, fileKey, fileCapo, shapeKey, transposed } = keys;
-  // Rides in every sticky section header once the chart header has scrolled
-  // away. Only when transposed: a chart in its own key needs no label.
-  const marker = transposed ? keyBadge(keys) : undefined;
 
   return (
     <div
@@ -97,7 +94,6 @@ export function ChartView({
           time={song.meta.time}
           fit={{ capacity, max }}
           showLyrics={showLyrics}
-          {...(marker ? { marker } : {})}
         />
       ))}
     </div>

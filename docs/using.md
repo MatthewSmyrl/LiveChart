@@ -159,10 +159,9 @@ Tap the key in the toolbar, or in the chart header, to open the panel:
   song is playing from a setlist that sets a key for it, to what the setlist
   says.
 
-**A transposed chart is always marked.** The key button goes amber, the chart
-header says what it was transposed from, and the key rides in every section
-header, so it's still on screen once you've scrolled past the top. A chart
-showing none of that is exactly as its file was written.
+**A transposed chart is always marked.** The key button in the toolbar goes
+amber, and the chart header, next to the title, says what it was transposed
+from. A chart showing neither is exactly as its file was written.
 
 **It's for this song, this time.** Like the Lyrics button, a key you choose here
 lasts as long as the song is up. Open the song again — or move on to another

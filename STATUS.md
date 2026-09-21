@@ -1,15 +1,14 @@
 # LiveChart — project status
 
-**Last updated:** 2026-09-21 · **Phases 0–5 deployed and in use; transposition
-6a–6d built, not yet deployed** · 171 tests locally, 163 in CI ·
-**live at https://matthewsmyrl.github.io/LiveChart/**
+**Last updated:** 2026-09-21 · **Phases 0–5 in use; transposition Part 1
+(6a–6e) deployed 2026-09-21, awaiting the iPad run** · 171 tests locally, 163 in
+CI · **live at https://matthewsmyrl.github.io/LiveChart/**
 
 ---
 
-## ⏳ Start here — transposition is built, and waiting on two things
+## ⏳ Start here — transposition is deployed; the iPad run is next
 
-**Built 2026-09-21, committed locally, not pushed.** Part 1 of
-`TRANSPOSITION-PLAN.md`, phases 6a–6d, plus the guide half of 6e:
+**Built and deployed 2026-09-21.** Part 1 of `TRANSPOSITION-PLAN.md`:
 
 | Phase | Commit | What |
 |---|---|---|
@@ -17,18 +16,23 @@
 | 6b | `27c1b7d` | `src/music/` — spelled notes, intervals, R2.7/R2.8, `viewSong`. 38 tests |
 | 6c | `359f069` | Key button, key panel, header readout, amber transposed marker |
 | 6d | `40c1b41` | `SetEntry`, normalise-on-read, backup v3, pins in the set editor |
-| 6e (guide) | *this commit* | `using.md`, `setlists.md`, `lcf-format.md`, `README.md` |
+| 6e | `4e97d98` + the next | Guide; no key in section headers; word examples in `Format Test` |
 
-**What still stands between this and the iPad, in order:**
+**The library check (plan §9 item 4) is closed** — Matt, 2026-09-21: every
+chart on the iPad was built in `songs/local/`, so the five charts here *are* the
+library, and none of them changes class. Anything else will turn up in use.
+`scripts/check-grammar.mjs` stays for checking a chart or bundle later.
 
-1. **The library check (plan §9 item 4).** Matt exports a backup bundle from the
-   iPad to this machine, then:
-   `node scripts/check-grammar.mjs <bundle.json>` — lists every token 6a turns
-   from a chord into a literal. The charts here produce none. **Do not push
-   before this is done**: 6a changes how existing charts render.
-2. **Push, verify the deploy, and the iPad run with the pedal** — the rest of
-   6e. Force-quit and relaunch first. What to check is in *Transposition —
-   the iPad run* below.
+**Next: the iPad run with the pedal.** Force-quit and relaunch first. What to
+check is in *Transposition — the iPad run* below.
+
+**The key is not repeated in section headers** — Matt, 2026-09-21, closing plan
+§9 item 1. It was built that way first and was noise: the same thing on every
+section. A transposed chart is marked by the amber Key button and the header
+next to the title, and that is enough. **It may come back with key changes
+mid-song** — a song that modulates for an interlude — where showing the *new*
+key in amber at the section where it changes would say something. Not planned
+yet.
 
 **Part 2 — `NUMERALS-PLAN.md` — is decided but not yet planned.** Roman
 numerals, contributed by **Lance Ruby, who is to be credited in the guide**. It
@@ -39,11 +43,8 @@ both now in place.
 ### Transposition — calls made during the build
 
 Each is a reading of the plan, not a new decision; Matt may want to confirm the
-first four on the device.
+first few on the device.
 
-- **The sticky-header marker (plan §9 item 1)** is built as the default: when
-  transposed, the key rides at the right of every section header in amber —
-  `F·2`. Nothing when untransposed. Decide on the iPad.
 - **Setlist rows open the key panel when you tap the song title.** R4.8 wants
   pinning without opening the chart, and R4.9 wants nothing on an unpinned row,
   so there is no per-row Key button — the title is the control, with a one-line
@@ -77,8 +78,7 @@ suspended while the panel is open.
 
 On the iPad, with the pedal:
 
-- The amber marker reads as "transposed" at gig distance — and the sticky
-  marker is worth its place (plan §9 item 1).
+- The amber Key button and header read as "transposed" at gig distance.
 - The panel's key grid is comfortable to hit standing up.
 - A real set carrying pinned keys walks through with the pedal.
 - The old setlists on the device survive the update — the one test only the
@@ -712,9 +712,8 @@ a broken page turn and isn't one. Either display the pane, or
 
 ## Next
 
-**Transposition, Part 1 — built, not deployed.** `TRANSPOSITION-PLAN.md`. 6a–6d
-and the guide are committed locally; what remains is the iPad library check,
-the deploy and the iPad run. See *Start here*.
+**Transposition, Part 1 — deployed 2026-09-21.** `TRANSPOSITION-PLAN.md`. What
+remains is the iPad run with the pedal. See *Start here*.
 
 **Numerals, Part 2 — waiting on Lance Ruby.** `NUMERALS-PLAN.md` records what is
 decided. Builds on 6b and 6c, so it comes after Part 1 regardless.
@@ -723,11 +722,15 @@ decided. Builds on 6b and 6c, so it comes after Part 1 regardless.
   image-only, no text layer), sharing.
 
 ### Smaller ideas, not yet scheduled
-- **`%` inside a bar.** *Let It Be* writes `|F % Em Dm|`, meaning "F again for a
-  beat". The format only knows `%` alone in a bar, so this `%` renders as a
-  dimmed literal — it always has, and it never transposes, so it is harmless.
-  Found by `scripts/check-grammar.mjs` on 2026-09-21. A beat-repeat token would
-  be a format change, so it is Matt's call.
+- **Key changes mid-song.** Many songs modulate for an interlude or a last
+  chorus. Discussed, not planned. If it comes, the amber key marker may return
+  at the section where the key changes — see *Start here*.
+- **A continuation symbol.** *Let It Be* writes `|F % Em Dm|` for "F carries on
+  a beat" — a `%` standing in for a feature the format doesn't have yet. It is
+  the beat hold that `docs/lcf-format.md` already reserves as a bare `/`
+  (`|D / / G|`). Until then it renders as a dimmed literal, and never
+  transposes, so it is harmless. Matt, 2026-09-21: not a problem, just
+  unbuilt.
 - **Toggling lyrics mid-song.** The per-song `Lyrics:` default landed on
   2026-08-11, so the decision is now carried by the file. What is still missing
   is changing your mind *during* a song: the Lyrics button lives in the toolbar
